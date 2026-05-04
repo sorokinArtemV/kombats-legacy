@@ -1,0 +1,117 @@
+# Local developer infrastructure stack.
+#
+# Purpose: start ONLY the supporting infrastructure that Kombats services
+# (Players, Matchmaking, Battle, BFF) need when they are launched directly
+# from the IDE or `dotnet run` on the host. No application services are
+# defined here — run them yourself from Rider / Visual Studio / CLI.
+#
+# Ports, credentials, database names, and Keycloak realm expectations
+# match the main docker-compose.yml and the default appsettings.json of
+# each service so no configuration overrides are needed on the host.
+#
+# Usage:
+#   docker compose -f docker-compose.local.yml up -d
+#   docker compose -f docker-compose.local.yml down
+#
+# A distinct project name keeps containers and volumes isolated from the
+# main `docker-compose.yml` stack so switching between them is safe.
+
+name: kombats-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kombats_local_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kombats
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: kombats_local_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kombats_local_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: kombats_local_keycloak_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    ports:
+      - "5433:5432"
+    volumes:
+      - keycloak_db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: kombats_local_keycloak
+    # `--import-realm` imports any JSON files placed under
+    # /opt/keycloak/data/import at startup. `infra/keycloak/kombats-realm.json`
+    # provisions the `kombats` realm, the `account` client (direct-grant
+    # enabled), and the local dev test users. See docs/local-dev/auth.md.
+    command: ["start-dev", "--import-realm"]
+    restart: unless-stopped
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: "xforwarded"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak-db
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+      - ./infra/keycloak-themes:/opt/keycloak/themes:ro
+
+volumes:
+  postgres_data:
+  keycloak_db:
+  redis_data:

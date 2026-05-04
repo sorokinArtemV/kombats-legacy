@@ -1,0 +1,265 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+@import './ui/theme/tokens.css';
+@import './ui/theme/arenas.css';
+@import './ui/theme/fonts.css';
+
+/* Tailwind utility mappings — exposes semantic tokens as utility classes.
+ * Components should read SEMANTIC tokens (bg-accent, text-primary, shadow-panel)
+ * rather than palette/kombats-* aliases when possible. The kombats-* aliases
+ * remain for legacy class names already in the codebase. */
+@theme {
+  /* ---- Surfaces ---- */
+  --color-bg-primary: var(--color-bg-primary);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-bg-nav: var(--color-bg-nav);
+  --color-bg-overlay: var(--color-bg-overlay);
+
+  /* Glass surfaces (translucent panels) */
+  --color-glass: var(--color-glass);
+  --color-glass-dense: var(--color-glass-dense);
+  --color-glass-subtle: var(--color-glass-subtle);
+  --color-glass-solid: var(--color-glass-solid);
+
+  /* Fighter portraits */
+  --color-portrait-friendly: var(--color-portrait-friendly);
+  --color-portrait-hostile: var(--color-portrait-hostile);
+
+  /* ---- Borders ---- */
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-divider: var(--color-border-divider);
+  --color-border-emphasis: var(--color-border-emphasis);
+
+  /* ---- Text ---- */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-on-accent: var(--color-text-on-accent);
+  --color-text-on-danger: var(--color-text-on-danger);
+
+  /* ---- Accent (gold) ---- */
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-primary: var(--color-accent-primary);
+  --color-accent-text: var(--color-accent-text);
+  --color-accent-muted: var(--color-accent-muted);
+
+  /* ---- Kombats palette aliases (legacy class names) ---- */
+  --color-kombats-charcoal: var(--color-kombats-charcoal);
+  --color-kombats-ink-navy: var(--color-kombats-ink-navy);
+  --color-kombats-deep-indigo: var(--color-kombats-deep-indigo);
+  --color-kombats-smoke-gray: var(--color-kombats-smoke-gray);
+
+  --color-kombats-gold: var(--color-kombats-gold);
+  --color-kombats-gold-light: var(--color-kombats-gold-light);
+  --color-kombats-gold-dark: var(--color-kombats-gold-dark);
+
+  --color-kombats-crimson: var(--color-kombats-crimson);
+  --color-kombats-crimson-dark: var(--color-kombats-crimson-dark);
+  --color-kombats-crimson-light: var(--color-kombats-crimson-light);
+  --color-kombats-crimson-bright: var(--color-kombats-crimson-bright);
+
+  --color-kombats-jade: var(--color-kombats-jade);
+  --color-kombats-jade-dark: var(--color-kombats-jade-dark);
+  --color-kombats-jade-light: var(--color-kombats-jade-light);
+
+  --color-kombats-moon-silver: var(--color-kombats-moon-silver);
+  --color-kombats-moon-silver-light: var(--color-kombats-moon-silver-light);
+  --color-kombats-moon-silver-dark: var(--color-kombats-moon-silver-dark);
+
+  /* Ceremonial bright gold */
+  --color-victory-gold: var(--color-victory-gold);
+
+  /* ---- Action tones ---- */
+  --color-attack: var(--color-attack);
+  --color-attack-strong: var(--color-attack-strong);
+  --color-attack-text: var(--color-attack-text);
+  --color-attack-soft: var(--color-attack-soft);
+  --color-block: var(--color-block);
+  --color-block-strong: var(--color-block-strong);
+  --color-block-text: var(--color-block-text);
+  --color-block-soft: var(--color-block-soft);
+  --color-go: var(--color-go);
+  --color-go-hover: var(--color-go-hover);
+
+  /* ---- HP bands ---- */
+  --color-hp-high: var(--color-hp-high);
+  --color-hp-medium: var(--color-hp-medium);
+  --color-hp-low: var(--color-hp-low);
+
+  /* ---- Body zones ---- */
+  --color-zone-head: var(--color-zone-head);
+  --color-zone-chest: var(--color-zone-chest);
+  --color-zone-belly: var(--color-zone-belly);
+  --color-zone-waist: var(--color-zone-waist);
+  --color-zone-legs: var(--color-zone-legs);
+
+  /* ---- Status / Semantic ---- */
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-info: var(--color-info);
+  --color-danger: var(--color-danger);
+
+  /* ---- Typography (Tailwind font-* utilities) ---- */
+  --font-primary: var(--font-primary);
+  --font-display: var(--font-display);
+  --font-jp: var(--font-jp);
+  --font-glyph: var(--font-glyph);
+  --font-wordmark: var(--font-wordmark);
+  --font-mono: var(--font-mono);
+
+  /* ---- Geometry ---- */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  /* ---- Effects exposed as Tailwind shadow utilities ---- */
+  --shadow-panel: var(--shadow-panel);
+  --shadow-panel-lift: var(--shadow-panel-lift);
+  --shadow-success: var(--shadow-success);
+  --shadow-error: var(--shadow-error);
+  --shadow-info: var(--shadow-info);
+  --shadow-warning: var(--shadow-warning);
+  --shadow-title-glow: var(--shadow-title-glow);
+  --shadow-title-victory: var(--shadow-title-victory);
+  --shadow-title-defeat: var(--shadow-title-defeat);
+  --shadow-title-neutral: var(--shadow-title-neutral);
+  --shadow-title-soft: var(--shadow-title-soft);
+  --shadow-accent-soft: var(--shadow-accent-soft);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Kombats premium dark scrollbar — opt-in via .kombats-scroll. */
+.kombats-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--rgb-gold), 0.18) transparent;
+}
+.kombats-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.kombats-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+}
+.kombats-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--rgb-white), 0.08);
+  border-radius: 9999px;
+  transition: background-color 180ms ease;
+}
+.kombats-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--rgb-gold), 0.22);
+}
+.kombats-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--rgb-gold), 0.4);
+}
+.kombats-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Diamond brand mark — a 45°-rotated gold-bordered square with a
+   counter-rotated ideogram inside. DESIGN_REFERENCE.md §3.2. Used by
+   the login screen and the top nav wordmark; extract here so the size
+   can be tuned via a CSS variable without duplicating the CSS. */
+.kombats-diamond {
+  position: relative;
+  width: var(--kombats-diamond-size, 60px);
+  height: var(--kombats-diamond-size, 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(45deg);
+  border: 1px solid rgba(var(--rgb-gold-accent), 0.55);
+  background: rgba(var(--rgb-gold-accent), 0.05);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--rgb-gold-accent), 0.08),
+    0 0 20px rgba(var(--rgb-gold-accent), 0.22);
+}
+.kombats-diamond-glyph {
+  transform: rotate(-45deg);
+  color: var(--color-accent-primary);
+  font-family: var(--font-glyph);
+  font-size: var(--kombats-diamond-glyph-size, 30px);
+  line-height: 1;
+}
+
+/* Body-zone selector animations.
+   `kombats-zone-pulse` drives the selected-zone radial fill + SVG outline.
+   `kombats-zone-outline-in` drives the hover preview fade-in. */
+@keyframes kombats-zone-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes kombats-zone-outline-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* DM tab unread pulse. Applied by BottomDock to a DM tab whose
+   `unreadByPlayerId` is > 0; clears when the user clicks the tab
+   (setActiveTab/openDmTab drops the entry from the unread map). */
+@keyframes tab-pulse {
+  0%,
+  100% {
+    border-color: transparent;
+  }
+  50% {
+    border-color: var(--color-accent-primary);
+  }
+}
+.animate-tab-pulse {
+  animation: tab-pulse 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-tab-pulse {
+    animation: none;
+    border-color: var(--color-accent-primary);
+  }
+  /* `kombats-zone-pulse` and `kombats-zone-outline-in` are applied via
+     inline `animation` styles in BodyZoneSelector, so we cannot disable
+     them with a class override. Redefining the keyframes inside this
+     media query collapses them to a static end state — the animation
+     still runs, but every frame is identical, so users with reduced
+     motion see the selected/hover fill at full opacity without the
+     pulsing or fade-in. */
+  @keyframes kombats-zone-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes kombats-zone-outline-in {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

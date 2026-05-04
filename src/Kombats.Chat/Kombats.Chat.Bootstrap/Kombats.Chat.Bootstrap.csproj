@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Serilog.AspNetCore" />
+        <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+        <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+        <PackageReference Include="AspNetCore.HealthChecks.Rabbitmq" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Kombats.Chat.Api\Kombats.Chat.Api.csproj" />
+        <ProjectReference Include="..\Kombats.Chat.Application\Kombats.Chat.Application.csproj" />
+        <ProjectReference Include="..\Kombats.Chat.Domain\Kombats.Chat.Domain.csproj" />
+        <ProjectReference Include="..\Kombats.Chat.Infrastructure\Kombats.Chat.Infrastructure.csproj" />
+        <ProjectReference Include="..\Kombats.Chat.Contracts\Kombats.Chat.Contracts.csproj" />
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj" />
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Messaging\Kombats.Messaging.csproj" />
+    </ItemGroup>
+
+</Project>

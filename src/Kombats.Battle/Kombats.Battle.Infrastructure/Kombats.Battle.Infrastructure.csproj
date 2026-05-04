@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\Kombats.Battle.Application\Kombats.Battle.Application.csproj"/>
+        <ProjectReference Include="..\Kombats.Battle.Domain\Kombats.Battle.Domain.csproj"/>
+        <ProjectReference Include="..\Kombats.Battle.Realtime.Contracts\Kombats.Battle.Realtime.Contracts.csproj"/>
+        <ProjectReference Include="..\Kombats.Battle.Contracts\Kombats.Battle.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MassTransit"/>
+        <PackageReference Include="MassTransit.RabbitMQ"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="MassTransit.EntityFrameworkCore" />
+        <PackageReference Include="EFCore.NamingConventions"/>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+        <PackageReference Include="StackExchange.Redis"/>
+    </ItemGroup>
+
+</Project>
+
+

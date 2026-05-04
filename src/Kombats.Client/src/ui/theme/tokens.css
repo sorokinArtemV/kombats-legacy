@@ -1,0 +1,293 @@
+/* Kombats theme tokens.
+ *
+ * Three-layer system:
+ *   1. PALETTE  — raw color values, never referenced from components
+ *   2. SEMANTIC — what components consume (--color-accent, --color-bg-*, etc.)
+ *   3. EFFECTS  — composed effects (shadows, blurs) built from semantic tokens
+ *
+ * RGB-channel variables (--rgb-*) accompany each palette entry so callers can
+ * compose alpha-tinted variants without re-stating literal hex codes — a
+ * future theme swap only redefines the palette and channel pairs.
+ *
+ * Values mirror the design-system tokens (kombats palette + semantic accents)
+ * and are the single point of override for a future reskin.
+ */
+
+:root {
+  /* ============================================================
+     LAYER 1 — BASE PALETTE
+     Raw colors. Components must NEVER reference these directly.
+     ============================================================ */
+
+  /* Surface family (ink + charcoal + indigos) */
+  --palette-ink-navy: #0f1419;
+  --palette-charcoal: #1a1a1f;
+  --palette-deep-indigo: #1e1e2e;
+  --palette-smoke-gray: #2a2a35;
+
+  /* Gold scale */
+  --palette-gold: #c9a961; /* legacy kombats-gold (scrollbar/wordmark) */
+  --palette-gold-accent: #c9a25a; /* design-system accent gold (primary) */
+  --palette-gold-light: #d4b876;
+  --palette-gold-dark: #b8954a;
+  --palette-gold-victory: #e8b830; /* ceremonial bright gold */
+
+  /* Crimson scale (attack / danger) */
+  --palette-crimson: #c03744;
+  --palette-crimson-dark: #a02835;
+  --palette-crimson-light: #d04654;
+  --palette-crimson-bright: #ff2244; /* defeat slash highlight */
+
+  /* Jade scale (block / success) */
+  --palette-jade: #5a8a7a;
+  --palette-jade-dark: #4a7a6a;
+  --palette-jade-light: #6a9a8a;
+
+  /* Moon silver scale (neutral text / borders) */
+  --palette-moon-silver: #9a9aa8;
+  --palette-moon-silver-light: #b8b8c4;
+  --palette-moon-silver-dark: #7a7a88;
+
+  /* Foundational neutrals */
+  --palette-text-primary: #e8e8f0;
+  --palette-white: #ffffff;
+  --palette-black: #000000;
+
+  /* HP bar gradient stops (FighterNameplate parallelogram) */
+  --palette-hp-crimson-1: #aa4c4c;
+  --palette-hp-crimson-2: #a04545;
+  --palette-hp-crimson-3: #883a3a;
+  --palette-hp-jade-1: #648f73;
+  --palette-hp-jade-2: #5a8a6a;
+  --palette-hp-jade-3: #4a7a5a;
+
+  /* Body-zone colors (BodyZoneSelector — functional indicators) */
+  --palette-zone-head: #a78bfa;
+  --palette-zone-chest: #60a5fa;
+  --palette-zone-belly: #34d399;
+  --palette-zone-waist: #fbbf24;
+  --palette-zone-legs: #f87171;
+
+  /* Fighter portrait tints */
+  --palette-portrait-friendly: #2a2a3e;
+  --palette-portrait-hostile: #3e2a2a;
+
+  /* Silhouette mask fill (BodyZoneSelector) — slightly darker than ink-navy
+     so the silhouette reads against the panel surface. */
+  --palette-silhouette: #0a0e16;
+
+  /* SVG feFlood overrides — used by BodyZoneSelector
+     <feFlood flood-color="..."> at runtime via getComputedStyle.
+     Defaults mirror --palette-crimson and --palette-jade. */
+  --palette-attack-flood: #c03744;
+  --palette-block-flood: #5a8a7a;
+
+  /* Arena background — default is Palace Roof (full moon temple).
+     Per-arena overrides live in arenas.css. */
+  --arena-bg-image: url('../assets/backgrounds/full_moon.png');
+  --arena-overlay: linear-gradient(
+    180deg,
+    rgba(15, 20, 28, 0) 0%,
+    rgba(15, 20, 28, 0.2) 100%
+  );
+
+  /* RGB channels — for alpha compositing in rgba(var(--rgb-X), A) */
+  --rgb-ink-navy: 15, 20, 28;
+  --rgb-charcoal: 26, 26, 31;
+  --rgb-gold: 201, 169, 97; /* matches --palette-gold */
+  --rgb-gold-accent: 201, 162, 90; /* matches --palette-gold-accent */
+  --rgb-gold-victory: 232, 184, 48; /* matches --palette-gold-victory */
+  --rgb-crimson: 192, 55, 68;
+  --rgb-jade: 90, 138, 122;
+  --rgb-moon-silver: 154, 154, 168;
+  --rgb-text-primary: 232, 232, 240;
+  --rgb-white: 255, 255, 255;
+  --rgb-black: 0, 0, 0;
+  --rgb-attack-flood: 192, 55, 68;
+  --rgb-block-flood: 90, 138, 122;
+
+  /* ============================================================
+     LAYER 2 — SEMANTIC THEME TOKENS
+     What components actually use. Reskins redefine these.
+     ============================================================ */
+
+  /* Surfaces */
+  --color-bg-primary: var(--palette-ink-navy);
+  --color-bg-secondary: var(--palette-deep-indigo);
+  --color-bg-surface: var(--palette-charcoal);
+  --color-bg-elevated: var(--palette-smoke-gray);
+  --color-bg-nav: var(--palette-charcoal);
+  --color-bg-overlay: rgba(var(--rgb-black), 0.75);
+
+  /* Translucent glass surfaces (panels) */
+  --color-glass: rgba(var(--rgb-ink-navy), 0.7);
+  --color-glass-dense: rgba(var(--rgb-ink-navy), 0.88);
+  --color-glass-subtle: rgba(var(--rgb-ink-navy), 0.55);
+  --color-glass-solid: rgba(var(--rgb-ink-navy), 0.96);
+
+  /* Fighter portrait surfaces */
+  --color-portrait-friendly: var(--palette-portrait-friendly);
+  --color-portrait-hostile: var(--palette-portrait-hostile);
+
+  /* Silhouette mask fill */
+  --color-silhouette: var(--palette-silhouette);
+
+  /* Borders */
+  --color-border-subtle: rgba(var(--rgb-white), 0.06);
+  --color-border-divider: rgba(var(--rgb-white), 0.04);
+  --color-border-emphasis: rgba(var(--rgb-white), 0.12);
+  --color-border: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-emphasis);
+
+  /* Text */
+  --color-text-primary: var(--palette-text-primary);
+  --color-text-secondary: rgba(var(--rgb-text-primary), 0.75);
+  --color-text-muted: rgba(var(--rgb-text-primary), 0.48);
+  --color-text-on-accent: var(--palette-ink-navy);
+  --color-text-on-danger: var(--palette-white);
+
+  /* Accent (gold, design-system primary) */
+  --color-accent: var(--palette-gold-accent);
+  --color-accent-hover: var(--palette-gold-light);
+  --color-accent-text: rgba(var(--rgb-gold-accent), 0.9);
+  --color-accent-muted: rgba(var(--rgb-gold-accent), 0.6);
+  --color-accent-primary: var(--color-accent);
+  --color-accent-strong: var(--palette-gold-dark);
+
+  /* Ceremonial bright gold (VICTORY title, victory rays) */
+  --color-victory-gold: var(--palette-gold-victory);
+
+  /* Kombats palette aliases (kept for existing class names like
+     `text-kombats-gold`, `bg-kombats-crimson`). Each maps to a palette entry. */
+  --color-kombats-charcoal: var(--palette-charcoal);
+  --color-kombats-ink-navy: var(--palette-ink-navy);
+  --color-kombats-deep-indigo: var(--palette-deep-indigo);
+  --color-kombats-smoke-gray: var(--palette-smoke-gray);
+  --color-kombats-gold: var(--palette-gold);
+  --color-kombats-gold-light: var(--palette-gold-light);
+  --color-kombats-gold-dark: var(--palette-gold-dark);
+  --color-kombats-crimson: var(--palette-crimson);
+  --color-kombats-crimson-dark: var(--palette-crimson-dark);
+  --color-kombats-crimson-light: var(--palette-crimson-light);
+  --color-kombats-crimson-bright: var(--palette-crimson-bright);
+  --color-kombats-jade: var(--palette-jade);
+  --color-kombats-jade-dark: var(--palette-jade-dark);
+  --color-kombats-jade-light: var(--palette-jade-light);
+  --color-kombats-moon-silver: var(--palette-moon-silver);
+  --color-kombats-moon-silver-light: var(--palette-moon-silver-light);
+  --color-kombats-moon-silver-dark: var(--palette-moon-silver-dark);
+
+  /* Status / Semantic outcomes (mapped onto kombats palette) */
+  --color-success: var(--palette-jade);
+  --color-warning: var(--palette-gold-victory);
+  --color-error: var(--palette-crimson);
+  --color-danger: var(--palette-crimson);
+  --color-info: var(--palette-jade);
+
+  /* Action tones — battle attack/block (semantic.attack/block) */
+  --color-attack: var(--palette-crimson);
+  --color-attack-strong: var(--palette-crimson-dark);
+  --color-attack-text: var(--palette-crimson-light);
+  --color-attack-soft: rgba(var(--rgb-crimson), 0.15);
+  --color-block: var(--palette-jade);
+  --color-block-strong: var(--palette-jade-dark);
+  --color-block-text: var(--palette-jade-light);
+  --color-block-soft: rgba(var(--rgb-jade), 0.15);
+
+  /* Generic affirmative button (re-queue, ready) — mapped to jade */
+  --color-go: var(--palette-jade);
+  --color-go-hover: var(--palette-jade-dark);
+
+  /* HP bar bands (semantic traffic light) */
+  --color-hp-high: var(--palette-jade);
+  --color-hp-medium: var(--palette-gold);
+  --color-hp-low: var(--palette-crimson);
+
+  /* Body zone colors (battle) */
+  --color-zone-head: var(--palette-zone-head);
+  --color-zone-chest: var(--palette-zone-chest);
+  --color-zone-belly: var(--palette-zone-belly);
+  --color-zone-waist: var(--palette-zone-waist);
+  --color-zone-legs: var(--palette-zone-legs);
+
+  /* ============================================================
+     LAYER 3 — TYPOGRAPHY
+     Fonts mirror the design system reference.
+     Label sizing/letter-spacing tokens come from tokens.ts.typography.
+     ============================================================ */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Cinzel', 'Trajan Pro', 'Noto Serif JP', serif;
+  --font-jp: 'Noto Sans JP', 'Inter', sans-serif;
+  --font-glyph: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-wordmark: 'Cinzel', 'Trajan Pro', 'Noto Serif JP', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Label typography */
+  --label-fs: 11px;
+  --label-large-fs: 13px;
+  --label-display-fs: 12px;
+  --label-tracking: 0.18em;
+  --label-display-tracking: 0.24em;
+  --label-weight: 500;
+  --button-tracking: 0.05em;
+  --heading-tracking: 0.03em;
+
+  /* ============================================================
+     LAYER 4 — GEOMETRY
+     ============================================================ */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* ============================================================
+     LAYER 5 — EFFECTS
+     ============================================================ */
+
+  /* Backdrop blurs */
+  --blur-panel: blur(20px);
+  --blur-subtle: blur(10px);
+
+  /* Panel shadows */
+  --shadow-panel:
+    0 12px 32px rgba(var(--rgb-black), 0.5), inset 0 1px 0 rgba(var(--rgb-white), 0.04);
+  --shadow-panel-lift:
+    0 18px 48px rgba(var(--rgb-black), 0.55), inset 0 1px 0 rgba(var(--rgb-white), 0.04);
+
+  /* Text shadows for legibility on glass / scene art */
+  --shadow-text-on-glass: 0 1px 2px rgba(var(--rgb-black), 0.8);
+  --shadow-text-on-glass-strong:
+    0 1px 2px rgba(var(--rgb-black), 0.95), 0 0 6px rgba(var(--rgb-black), 0.7);
+
+  /* Outcome glow halos */
+  --shadow-success: 0 0 40px rgba(var(--rgb-jade), 0.4);
+  --shadow-error: 0 0 40px rgba(var(--rgb-crimson), 0.4);
+  --shadow-warning: 0 0 40px rgba(var(--rgb-gold-victory), 0.4);
+  --shadow-info: 0 0 40px rgba(var(--rgb-jade), 0.4);
+  --shadow-title-glow: 0 0 20px rgba(var(--rgb-white), 0.15);
+
+  /* Title text shadows (BattleResultScreen ceremonial titles) */
+  --shadow-title-victory:
+    0 0 30px rgba(var(--rgb-white), 0.3), 0 0 60px rgba(var(--rgb-gold-victory), 0.5),
+    0 0 100px rgba(var(--rgb-gold-victory), 0.2);
+  --shadow-title-defeat:
+    0 0 40px rgba(var(--rgb-crimson), 0.6), 0 0 80px rgba(var(--rgb-crimson), 0.25);
+  --shadow-title-neutral: 0 2px 16px rgba(var(--rgb-gold-accent), 0.25);
+  --shadow-title-soft: 0 2px 12px rgba(var(--rgb-gold-accent), 0.3);
+
+  /* Brand accent glow used by AppHeader chip + UnauthenticatedShell mark */
+  --shadow-accent-soft:
+    inset 0 0 0 1px rgba(var(--rgb-gold-accent), 0.08), 0 0 14px rgba(var(--rgb-gold-accent), 0.18);
+
+  /* ============================================================
+     LAYER 6 — ANIMATION
+     ============================================================ */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}

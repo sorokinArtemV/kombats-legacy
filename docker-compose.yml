@@ -1,0 +1,142 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kombats_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kombats
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: kombats_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: kombats_keycloak_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    ports:
+      - "5433:5432"
+    volumes:
+      - keycloak_db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: kombats_keycloak
+    command: ["start-dev", "--import-realm"]
+    restart: unless-stopped
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: "xforwarded"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak-db
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+      - ./infra/keycloak-themes:/opt/keycloak/themes:ro
+
+  redis:
+    image: redis:7-alpine
+    container_name: kombats_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  bff:
+    build:
+      context: .
+      dockerfile: src/Kombats.Bff/Kombats.Bff.Bootstrap/Dockerfile
+    container_name: kombats_bff
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Services__Players__BaseUrl: "http://players:8080"
+      Services__Matchmaking__BaseUrl: "http://matchmaking:8080"
+      Services__Battle__BaseUrl: "http://battle:8080"
+      Keycloak__Authority: "http://keycloak:8080/realms/kombats"
+      Keycloak__Audience: "kombats-api"
+    depends_on:
+      - keycloak
+
+  chat:
+    build:
+      context: .
+      dockerfile: src/Kombats.Chat/Kombats.Chat.Bootstrap/Dockerfile
+    container_name: kombats_chat
+    restart: unless-stopped
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PostgresConnection: "Host=postgres;Port=5432;Database=kombats;Username=postgres;Password=postgres"
+      ConnectionStrings__Redis: "redis:6379,allowAdmin=true"
+      Messaging__RabbitMq__Host: rabbitmq
+      Messaging__RabbitMq__Port: 5672
+      Messaging__RabbitMq__Username: guest
+      Messaging__RabbitMq__Password: guest
+      Keycloak__Authority: "http://keycloak:8080/realms/kombats"
+      Keycloak__Audience: "kombats-api"
+      Players__BaseUrl: "http://players:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      players:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  keycloak_db:
+  redis_data:

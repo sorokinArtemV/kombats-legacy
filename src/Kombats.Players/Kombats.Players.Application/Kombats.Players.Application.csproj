@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\Kombats.Players.Contracts\Kombats.Players.Contracts.csproj"/>
+        <ProjectReference Include="..\Kombats.Players.Domain\Kombats.Players.Domain.csproj"/>
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj"/>
+    </ItemGroup>
+
+</Project>

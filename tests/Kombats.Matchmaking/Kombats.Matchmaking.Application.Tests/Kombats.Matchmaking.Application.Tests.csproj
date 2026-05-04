@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Application\Kombats.Matchmaking.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Domain\Kombats.Matchmaking.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

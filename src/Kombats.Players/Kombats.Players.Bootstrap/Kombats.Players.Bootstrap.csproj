@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Serilog.AspNetCore" />
+        <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Kombats.Players.Api\Kombats.Players.Api.csproj" />
+        <ProjectReference Include="..\Kombats.Players.Application\Kombats.Players.Application.csproj" />
+        <ProjectReference Include="..\Kombats.Players.Domain\Kombats.Players.Domain.csproj" />
+        <ProjectReference Include="..\Kombats.Players.Infrastructure\Kombats.Players.Infrastructure.csproj" />
+        <ProjectReference Include="..\Kombats.Players.Contracts\Kombats.Players.Contracts.csproj" />
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj" />
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Messaging\Kombats.Messaging.csproj" />
+    </ItemGroup>
+
+</Project>
