@@ -1,0 +1,55 @@
+# .NET build artefacts
+**/bin/
+**/obj/
+**/publish/
+
+# Frontend build artefacts
+**/node_modules/
+**/dist/
+**/.next/
+**/.vite/
+
+# IDE / VCS
+.git/
+.gitignore
+.gitattributes
+.vs/
+.vscode/
+.idea/
+.claude/
+*.user
+*.suo
+*.userprefs
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test artefacts
+**/TestResults/
+*.trx
+*.coverage
+
+# Docker / compose
+docker-compose*.yml
+.dockerignore
+**/Dockerfile
+**/Dockerfile.*
+
+# Documentation (не нужна для сборки бэкенда)
+*.md
+docs/
+infra/keycloak-themes/README.md
+
+# Logs / env
+*.log
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# Design assets (только для фронта; бэкенд их не видит)
+design/
+design_V2/
