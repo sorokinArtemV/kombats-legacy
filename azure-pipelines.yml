@@ -1,0 +1,32 @@
+# azure-pipelines.yml
+# First pipeline — sanity check that the org, repo, and parallelism grant
+# are all working before we start building real pipelines.
+#
+# It does nothing useful: prints hello, lists repo contents, and exits.
+
+# CI trigger: run on every push to main.
+trigger:
+  - main
+
+# This job runs on a Microsoft-hosted Ubuntu agent (free tier, 1800 min/month).
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# `checkout: self` is implicit — code is fetched automatically at the start
+# of every job. We list it explicitly here once for clarity.
+  - checkout: self
+  - script: |
+      echo "Hello from Kombats pipeline!"
+      echo "Branch: $(Build.SourceBranchName)"
+      echo "Commit: $(Build.SourceVersion)"
+      echo "Build ID: $(Build.BuildId)"
+    displayName: 'Print build context'
+
+  - script: |
+      echo "Repo top-level contents:"
+      ls -la
+      echo ""
+      echo "Backend services:"
+      ls -la src/ || echo "(src/ not found yet — that's fine for now)"
+    displayName: 'List repo contents'
