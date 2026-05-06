@@ -136,13 +136,13 @@ services:
       keycloak:
         condition: service_started
       players:
-        condition: service_healthy
+        condition: service_started
       matchmaking:
-        condition: service_healthy
+        condition: service_started
       battle:
-        condition: service_healthy
+        condition: service_started
       chat:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
   players:
@@ -258,15 +258,15 @@ services:
       - "5004:8080"
     depends_on:
       postgres:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
       keycloak:
         condition: service_started
       players:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
 volumes:

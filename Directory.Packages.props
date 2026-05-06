@@ -13,10 +13,11 @@
   </ItemGroup>
 
   <ItemGroup Label="MassTransit">
-    <PackageVersion Include="MassTransit" Version="8.3.0" />
-    <PackageVersion Include="MassTransit.Abstractions" Version="8.3.0" />
-    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.3.0" />
-    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.3.0" />
+    <PackageVersion Include="MassTransit" Version="8.5.9" />
+    <PackageVersion Include="MassTransit.Abstractions" Version="8.5.9" />
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.9" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.9" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft Extensions">
