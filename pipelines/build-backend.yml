@@ -29,7 +29,7 @@ parameters:
 variables:
   - group: ghcr-credentials
   - name: IMAGE_PREFIX
-    value: ghcr.io/karanthir8/kombats
+    value: ghcr.io/sorokinartemv/kombats
 
 pool:
   vmImage: ubuntu-latest
