@@ -1,32 +1,56 @@
-# azure-pipelines.yml
-# First pipeline — sanity check that the org, repo, and parallelism grant
-# are all working before we start building real pipelines.
-#
-# It does nothing useful: prints hello, lists repo contents, and exits.
+# pipelines/build-backend.yml
+# CI pipeline: build 5 backend Docker images and push to GHCR.
+# Trigger: every push to main.
 
-# CI trigger: run on every push to main.
 trigger:
-  - main
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/**
+      - pipelines/build-backend.yml
 
-# This job runs on a Microsoft-hosted Ubuntu agent (free tier, 1800 min/month).
+parameters:
+  - name: services
+    type: object
+    default:
+      - name: bff
+        dockerfile: src/Kombats.Bff/Kombats.Bff.Bootstrap/Dockerfile
+      - name: battle
+        dockerfile: src/Kombats.Battle/Kombats.Battle.Bootstrap/Dockerfile
+      - name: players
+        dockerfile: src/Kombats.Players/Kombats.Players.Bootstrap/Dockerfile
+      - name: matchmaking
+        dockerfile: src/Kombats.Matchmaking/Kombats.Matchmaking.Bootstrap/Dockerfile
+      - name: chat
+        dockerfile: src/Kombats.Chat/Kombats.Chat.Bootstrap/Dockerfile
+
+variables:
+  - group: ghcr-credentials
+  - name: IMAGE_PREFIX
+    value: ghcr.io/karanthir8/kombats
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-latest
 
 steps:
-# `checkout: self` is implicit — code is fetched automatically at the start
-# of every job. We list it explicitly here once for clarity.
   - checkout: self
-  - script: |
-      echo "Hello from Kombats pipeline!"
-      echo "Branch: $(Build.SourceBranchName)"
-      echo "Commit: $(Build.SourceVersion)"
-      echo "Build ID: $(Build.BuildId)"
-    displayName: 'Print build context'
 
   - script: |
-      echo "Repo top-level contents:"
-      ls -la
-      echo ""
-      echo "Backend services:"
-      ls -la src/ || echo "(src/ not found yet — that's fine for now)"
-    displayName: 'List repo contents'
+      echo "$(GHCR_TOKEN)" | docker login ghcr.io -u "$(GHCR_USERNAME)" --password-stdin
+    displayName: 'Login to GHCR'
+
+  - ${{ each svc in parameters.services }}:
+      - script: |
+          docker build \
+            -f ${{ svc.dockerfile }} \
+            -t $(IMAGE_PREFIX)-${{ svc.name }}:$(Build.BuildId) \
+            -t $(IMAGE_PREFIX)-${{ svc.name }}:latest \
+            .
+        displayName: 'Build ${{ svc.name }}'
+
+      - script: |
+          docker push $(IMAGE_PREFIX)-${{ svc.name }}:$(Build.BuildId)
+          docker push $(IMAGE_PREFIX)-${{ svc.name }}:latest
+        displayName: 'Push ${{ svc.name }}'
