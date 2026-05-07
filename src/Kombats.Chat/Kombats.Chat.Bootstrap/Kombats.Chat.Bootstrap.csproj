@@ -9,6 +9,7 @@
         <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
         <PackageReference Include="AspNetCore.HealthChecks.Redis" />
         <PackageReference Include="AspNetCore.HealthChecks.Rabbitmq" />
+        <PackageReference Include="RabbitMQ.Client" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
         <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />

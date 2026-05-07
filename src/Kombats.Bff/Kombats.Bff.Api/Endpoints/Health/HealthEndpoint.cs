@@ -43,7 +43,7 @@ public sealed class HealthEndpoint : IEndpoint
                 client.BaseAddress = new Uri(kvp.Value);
                 client.Timeout = TimeSpan.FromSeconds(5);
 
-                HttpResponseMessage response = await client.GetAsync("/health", ct);
+                HttpResponseMessage response = await client.GetAsync("/health/ready", ct);
                 status = response.IsSuccessStatusCode ? "healthy" : "unhealthy";
             }
             catch
