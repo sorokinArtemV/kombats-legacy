@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(az bicep *)",
+      "Bash(echo \"---EXIT:$?---\")",
+      "Bash(GHCR_TOKEN=dummy POSTGRES_PASSWORD=dummy KEYCLOAK_DB_PASSWORD=dummy KEYCLOAK_ADMIN_PASSWORD=dummy az bicep build-params --file infra/main.bicepparam)",
+      "Bash(az account show *)",
+      "Bash(az containerapp show *)",
+      "Bash(az containerapp env show *)",
+      "Bash(az containerapp replica list *)",
+      "Bash(az containerapp job show *)",
+      "Bash(az containerapp job execution *)",
+      "Bash(az containerapp exec *)",
+      "Bash(az containerapp *)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(az deployment group create *)",
+      "PowerShell(az deployment group show *)",
+      "PowerShell(az deployment operation group *)",
+      "PowerShell(az containerapp show *)",
+      "PowerShell(az containerapp job *)",
+      "PowerShell($exec = \"migrator-dj247rb\"; $start = Get-Date; while \\($true\\) { $st = az containerapp job execution show -g rg-kombats-demo -n migrator --job-execution-name $exec --query \"properties.status\" -o tsv; Write-Host \"$\\(Get-Date -Format HH:mm:ss\\) status=$st\"; if \\($st -eq \"Succeeded\" -or $st -eq \"Failed\"\\) { break }; if \\(\\(\\(Get-Date\\) - $start\\).TotalMinutes -gt 5\\) { Write-Host \"TIMEOUT\"; break }; Start-Sleep -Seconds 15 })",
+      "PowerShell($bff = \"https://bff.yellowsky-28de604f.westeurope.azurecontainerapps.io\"; try { $r = Invoke-WebRequest \"$bff/health\" -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 15; \"BFF /health: $\\($r.StatusCode\\) $\\($r.StatusDescription\\)\" } catch { \"BFF /health err: $\\($_.Exception.Message\\)\" }; try { $r = Invoke-WebRequest $bff -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 15; \"BFF /: $\\($r.StatusCode\\) $\\($r.StatusDescription\\)\" } catch { \"BFF / err: $\\($_.Exception.Message\\)\" })",
+      "PowerShell($bff = \"https://bff.yellowsky-28de604f.westeurope.azurecontainerapps.io\"; foreach \\($p in @\\(\"/health\",\"/\"\\)\\) { try { $r = Invoke-WebRequest \"$bff$p\" -UseBasicParsing -TimeoutSec 15; \"BFF $p`: $\\($r.StatusCode\\) $\\($r.StatusDescription\\)\" } catch [System.Net.WebException] { $resp = $_.Exception.Response; if \\($resp\\) { \"BFF $p`: $\\([int]$resp.StatusCode\\) $\\($resp.StatusDescription\\)\" } else { \"BFF $p err: $\\($_.Exception.Message\\)\" } } catch { try { $code=$_.Exception.Response.StatusCode.value__; $desc=$_.Exception.Response.ReasonPhrase; \"BFF $p`: $code $desc\" } catch { \"BFF $p err: $\\($_.Exception.Message\\)\" } } })",
+      "PowerShell($kc = \"https://keycloak.yellowsky-28de604f.westeurope.azurecontainerapps.io\"; $resp = Invoke-WebRequest \"$kc/realms/kombats/.well-known/openid-configuration\" -UseBasicParsing -TimeoutSec 15; $resp.StatusCode; $resp.Content | ConvertFrom-Json | Select-Object issuer, authorization_endpoint | Format-List)",
+      "PowerShell(az containerapp *)",
+      "PowerShell(foreach \\($a in @\\('battle','players','matchmaking','chat','keycloak','postgres','redis','rabbitmq'\\)\\) { $st = az containerapp replica list -g rg-kombats-demo -n $a --query \"[0].{state:properties.runningState, container:properties.containers[0].runningState}\" -o json 2>$null; \"$a -> $st\" })",
+      "PowerShell($apps = @\\('bff', 'battle', 'players', 'matchmaking', 'chat'\\); for \\($i = 0; $i -lt 12; $i++\\) { $allUp = $true; foreach \\($app in $apps\\) { $st = az containerapp show -g rg-kombats-demo -n $app --query \"properties.runningStatus\" -o tsv; Write-Host \"$app = $st\"; if \\($st -ne 'Running'\\) { $allUp = $false } }; if \\($allUp\\) { Write-Host \"All apps Running\"; break }; Write-Host \"---\"; Start-Sleep -Seconds 15 })",
+      "PowerShell(foreach \\($a in @\\('bff','battle','players','matchmaking','chat'\\)\\) { $r = az containerapp replica list -g rg-kombats-demo -n $a --query \"[0].{state:properties.runningState, container:properties.containers[0].runningState}\" -o json 2>$null | ConvertFrom-Json; \"{0,-12} state={1,-11} container={2}\" -f $a, $r.state, $r.container })"
+    ]
+  }
+}

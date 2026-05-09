@@ -1,26 +1,93 @@
 #!/usr/bin/env bash
-# run-migrations.sh — CI/CD migration runner for Kombats services
+# scripts/run-migrations.sh — CI/CD migration runner for Kombats services
 #
-# Applies EF Core migrations for all Kombats services against the target database.
-# Run this as a CI/CD step or init container BEFORE deploying service containers.
-# Per AD-13: migrations must NOT run on application startup.
+# Designed to run as a Container Apps Job entrypoint.
+# Reads Postgres connection details from environment variables, waits for
+# Postgres to be ready, creates the Keycloak database and user, then runs
+# EF Core migrations for all backend services that have a database.
 #
-# Usage:
-#   ./scripts/run-migrations.sh [CONNECTION_STRING]
-#
-# If CONNECTION_STRING is not provided, defaults to the development connection string.
-# In CI/CD, pass the production connection string as an argument or via
-# the KOMBATS_POSTGRES_CONNECTION environment variable.
+# Required env vars:
+#   POSTGRES_HOST          — internal hostname, e.g. postgres.internal.<env-domain>
+#   POSTGRES_PORT          — typically 5432
+#   POSTGRES_DB            — main DB for backend services, e.g. "kombats"
+#   POSTGRES_USER          — superuser, e.g. "kombats"
+#   POSTGRES_PASSWORD      — password for POSTGRES_USER
+#   KEYCLOAK_DB_PASSWORD   — password to assign to the new "keycloak" DB user
 
 set -euo pipefail
 
-CONNECTION_STRING="${1:-${KOMBATS_POSTGRES_CONNECTION:-Host=localhost;Port=5432;Database=kombats;Username=postgres;Password=postgres}}"
+: "${POSTGRES_HOST:?POSTGRES_HOST is required}"
+: "${POSTGRES_PORT:?POSTGRES_PORT is required}"
+: "${POSTGRES_DB:?POSTGRES_DB is required}"
+: "${POSTGRES_USER:?POSTGRES_USER is required}"
+: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+: "${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+CONNECTION_STRING="Host=${POSTGRES_HOST};Port=${POSTGRES_PORT};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+
+export PGPASSWORD="$POSTGRES_PASSWORD"
+
 echo "=== Kombats Migration Runner ==="
-echo "Repo root: $REPO_ROOT"
+echo "Postgres: ${POSTGRES_HOST}:${POSTGRES_PORT}, DB: ${POSTGRES_DB}, User: ${POSTGRES_USER}"
 echo ""
+
+# ----- 1. Wait for Postgres to be ready -----
+
+echo "--- Waiting for Postgres ---"
+for i in $(seq 1 60); do
+    if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -q; then
+        echo "Postgres is ready."
+        break
+    fi
+    if [ "$i" -eq 60 ]; then
+        echo "ERROR: Postgres did not become ready in 60 seconds."
+        exit 1
+    fi
+    echo "  attempt $i: not ready, retrying in 2s..."
+    sleep 2
+done
+echo ""
+
+# ----- 2. Bootstrap Keycloak database and user -----
+
+echo "--- Bootstrapping Keycloak DB and user ---"
+
+# Create database (idempotent — skip if exists)
+DB_EXISTS=$(psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -tAc \
+    "SELECT 1 FROM pg_database WHERE datname='keycloak'")
+if [ "$DB_EXISTS" = "1" ]; then
+    echo "Database 'keycloak' already exists — skipping CREATE."
+else
+    psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -c \
+        "CREATE DATABASE keycloak"
+    echo "Database 'keycloak' created."
+fi
+
+# Create user (idempotent)
+USER_EXISTS=$(psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -tAc \
+    "SELECT 1 FROM pg_roles WHERE rolname='keycloak'")
+if [ "$USER_EXISTS" = "1" ]; then
+    echo "User 'keycloak' already exists — updating password."
+    psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -c \
+        "ALTER USER keycloak WITH PASSWORD '${KEYCLOAK_DB_PASSWORD}'"
+else
+    psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -c \
+        "CREATE USER keycloak WITH PASSWORD '${KEYCLOAK_DB_PASSWORD}'"
+    echo "User 'keycloak' created."
+fi
+
+# Grant privileges (idempotent)
+psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -c \
+    "GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak"
+psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d keycloak -c \
+    "GRANT ALL ON SCHEMA public TO keycloak"
+
+echo "Keycloak bootstrap complete."
+echo ""
+
+# ----- 3. Apply EF Core migrations -----
 
 apply_migrations() {
     local service_name="$1"

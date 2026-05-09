@@ -1,0 +1,152 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "9000001168734921776"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Container App name. Becomes the subdomain in the FQDN: <name>.<env-domain>"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region."
+      }
+    },
+    "environmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Container Apps Environment."
+      }
+    },
+    "image": {
+      "type": "string",
+      "metadata": {
+        "description": "Full image reference with tag, e.g. ghcr.io/sorokinartemv/kombats-bff:42"
+      }
+    },
+    "external": {
+      "type": "bool",
+      "metadata": {
+        "description": "External (public HTTPS URL) or internal (only reachable from inside the environment)."
+      }
+    },
+    "targetPort": {
+      "type": "int",
+      "defaultValue": 8080,
+      "metadata": {
+        "description": "Port the container listens on. ASP.NET Core defaults to 8080."
+      }
+    },
+    "ghcrUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "GHCR username — owner of the package."
+      }
+    },
+    "ghcrToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "GHCR Personal Access Token with read:packages scope."
+      }
+    },
+    "envVars": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Plain (non-secret) environment variables for the container. Array of { name, value } objects."
+      }
+    },
+    "secretEnvVars": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Secret environment variables. Array of { name, value }. Each becomes a Container App secret and is exposed as an env var via secretRef."
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "userSecrets",
+        "count": "[length(parameters('secretEnvVars'))]",
+        "input": {
+          "name": "[parameters('secretEnvVars')[copyIndex('userSecrets')].name]",
+          "value": "[parameters('secretEnvVars')[copyIndex('userSecrets')].value]"
+        }
+      },
+      {
+        "name": "secretEnvRefs",
+        "count": "[length(parameters('secretEnvVars'))]",
+        "input": {
+          "name": "[toUpper(replace(parameters('secretEnvVars')[copyIndex('secretEnvRefs')].name, '-', '_'))]",
+          "secretRef": "[parameters('secretEnvVars')[copyIndex('secretEnvRefs')].name]"
+        }
+      }
+    ],
+    "allSecrets": "[concat(createArray(createObject('name', 'ghcr-token', 'value', parameters('ghcrToken'))), variables('userSecrets'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[parameters('environmentId')]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": "[parameters('external')]",
+            "targetPort": "[parameters('targetPort')]",
+            "transport": "auto",
+            "allowInsecure": false
+          },
+          "registries": [
+            {
+              "server": "ghcr.io",
+              "username": "[parameters('ghcrUsername')]",
+              "passwordSecretRef": "ghcr-token"
+            }
+          ],
+          "secrets": "[variables('allSecrets')]"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('name')]",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              },
+              "env": "[concat(parameters('envVars'), variables('secretEnvRefs'))]"
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "value": "[parameters('name')]"
+    },
+    "fqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+    }
+  }
+}
