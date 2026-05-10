@@ -196,8 +196,8 @@ stages:
                     inlineScript: |
                       set -euo pipefail
 
-                      echo "Waiting 30s for Keycloak to come back after restart..."
-                      sleep 30
+                      echo "Waiting 90s for Keycloak to come back after restart..."
+                      sleep 90
 
                       bff_status=$(curl -s -o /dev/null -w '%{http_code}' "$BFF_URL/health" || echo "000")
                       kc_status=$(curl -s -o /dev/null -w '%{http_code}' "$KC_URL/realms/kombats/.well-known/openid-configuration" || echo "000")
