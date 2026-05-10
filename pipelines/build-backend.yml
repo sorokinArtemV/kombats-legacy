@@ -29,11 +29,13 @@ parameters:
         dockerfile: src/Kombats.Chat/Kombats.Chat.Bootstrap/Dockerfile
       - name: keycloak
         dockerfile: infra/keycloak/Dockerfile
+      - name: migrator
+        dockerfile: src/Kombats.Migrator/Dockerfile
 
 variables:
   - group: ghcr-credentials
   - name: IMAGE_PREFIX
-    value: ghcr.io/karanthir8/kombats
+    value: ghcr.io/sorokinartemv/kombats
 
 pool:
   vmImage: ubuntu-latest
