@@ -196,19 +196,36 @@ stages:
                     inlineScript: |
                       set -euo pipefail
 
-                      echo "Waiting 90s for Keycloak to come back after restart..."
-                      sleep 90
+                      echo "Waiting 30s for Keycloak to come back after restart..."
+                      sleep 30
 
-                      bff_status=$(curl -s -o /dev/null -w '%{http_code}' "$BFF_URL/health" || echo "000")
+                      # Keycloak issuer endpoint — usually warms up quickly
                       kc_status=$(curl -s -o /dev/null -w '%{http_code}' "$KC_URL/realms/kombats/.well-known/openid-configuration" || echo "000")
                       swa_status=$(curl -s -o /dev/null -w '%{http_code}' "$SWA_URL" || echo "000")
 
+                      # BFF /health — with retry loop, because downstream services
+                      # (players, matchmaking, battle) are scaled to zero and need
+                      # cold start (~15s each). First attempt warms them up;
+                      # subsequent attempts should return 200 once they're ready.
+                      echo "Probing BFF /health (will warm up scale-to-zero downstream services)..."
+                      bff_status="000"
+                      for attempt in 1 2 3 4 5 6; do
+                        bff_status=$(curl -s --max-time 25 -o /dev/null -w '%{http_code}' "$BFF_URL/health" || echo "000")
+                        echo "  attempt $attempt: $bff_status"
+                        if [[ "$bff_status" == "200" ]]; then
+                          break
+                        fi
+                        sleep 15
+                      done
+
+                      echo ""
+                      echo "Final results:"
                       echo "  BFF /health:        $bff_status"
                       echo "  Keycloak issuer:    $kc_status"
                       echo "  SWA index:          $swa_status"
 
                       failed=0
-                      [[ "$bff_status" != "200" ]] && { echo "ERROR: BFF /health expected 200, got $bff_status" >&2; failed=1; }
+                      [[ "$bff_status" != "200" ]] && { echo "ERROR: BFF /health expected 200, got $bff_status (after 6 retry attempts)" >&2; failed=1; }
                       [[ "$kc_status" != "200" ]] && { echo "ERROR: Keycloak issuer expected 200, got $kc_status" >&2; failed=1; }
                       [[ "$swa_status" != "200" ]] && { echo "ERROR: SWA index expected 200, got $swa_status" >&2; failed=1; }
 
