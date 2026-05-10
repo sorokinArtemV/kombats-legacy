@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "10302485416988113156"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the existing Container Apps Environment."
+      }
+    },
+    "storageName": {
+      "type": "string",
+      "metadata": {
+        "description": "Logical name to register the storage under inside the environment. Container Apps reference this name in their volumes block."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage Account name (output from storage.bicep)."
+      }
+    },
+    "shareName": {
+      "type": "string",
+      "metadata": {
+        "description": "File Share name (output from storage.bicep)."
+      }
+    },
+    "storageAccountKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Storage Account access key. Marked secure so its value is not logged or exposed in deployment history."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/managedEnvironments/storages",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}/{1}', parameters('environmentName'), parameters('storageName'))]",
+      "properties": {
+        "azureFile": {
+          "accountName": "[parameters('storageAccountName')]",
+          "accountKey": "[parameters('storageAccountKey')]",
+          "shareName": "[parameters('shareName')]",
+          "accessMode": "ReadWrite"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "storageName": {
+      "type": "string",
+      "value": "[parameters('storageName')]"
+    }
+  }
+}

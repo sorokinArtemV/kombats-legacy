@@ -1,0 +1,167 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "7964997224047245309"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Container App name. Becomes the internal DNS hostname: <name>.internal.<env-domain>"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region."
+      }
+    },
+    "environmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Container Apps Environment."
+      }
+    },
+    "image": {
+      "type": "string",
+      "metadata": {
+        "description": "Public image reference, e.g. postgres:16-alpine. No registry credentials needed."
+      }
+    },
+    "port": {
+      "type": "int",
+      "metadata": {
+        "description": "Port the stateful service listens on. 5432 for Postgres, 6379 for Redis, 5672 for RabbitMQ."
+      }
+    },
+    "storageName": {
+      "type": "string",
+      "metadata": {
+        "description": "Logical name of the registered storage in the Container Apps Environment (output from env-storage.bicep)."
+      }
+    },
+    "mountSubPath": {
+      "type": "string",
+      "metadata": {
+        "description": "Subpath inside the File Share where this services data lives. Use a unique value per service to isolate them."
+      }
+    },
+    "mountPath": {
+      "type": "string",
+      "metadata": {
+        "description": "Mount path inside the container. Service-specific: /var/lib/postgresql/data for Postgres, /data for Redis, /var/lib/rabbitmq for RabbitMQ."
+      }
+    },
+    "envVars": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Plain env vars. Array of { name, value }."
+      }
+    },
+    "secretEnvVars": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Secret env vars. Array of { name, value }. Same convention as backend-app.bicep: secret name \"foo-bar\" exposed as env FOO_BAR."
+      }
+    },
+    "cpu": {
+      "type": "string",
+      "defaultValue": "0.5",
+      "metadata": {
+        "description": "CPU allocation. Statefuls often want more than backend services."
+      }
+    },
+    "memory": {
+      "type": "string",
+      "defaultValue": "1Gi",
+      "metadata": {
+        "description": "Memory allocation. Must follow allowed CPU:memory ratios (1:2)."
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "allSecrets",
+        "count": "[length(parameters('secretEnvVars'))]",
+        "input": {
+          "name": "[parameters('secretEnvVars')[copyIndex('allSecrets')].name]",
+          "value": "[parameters('secretEnvVars')[copyIndex('allSecrets')].value]"
+        }
+      },
+      {
+        "name": "secretEnvRefs",
+        "count": "[length(parameters('secretEnvVars'))]",
+        "input": {
+          "name": "[toUpper(replace(parameters('secretEnvVars')[copyIndex('secretEnvRefs')].name, '-', '_'))]",
+          "secretRef": "[parameters('secretEnvVars')[copyIndex('secretEnvRefs')].name]"
+        }
+      }
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[parameters('environmentId')]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": false,
+            "targetPort": "[parameters('port')]",
+            "exposedPort": "[parameters('port')]",
+            "transport": "tcp"
+          },
+          "secrets": "[variables('allSecrets')]"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('name')]",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": "[json(parameters('cpu'))]",
+                "memory": "[parameters('memory')]"
+              },
+              "env": "[concat(parameters('envVars'), variables('secretEnvRefs'))]",
+              "volumeMounts": [
+                {
+                  "volumeName": "data",
+                  "mountPath": "[parameters('mountPath')]",
+                  "subPath": "[parameters('mountSubPath')]"
+                }
+              ]
+            }
+          ],
+          "volumes": [
+            {
+              "name": "data",
+              "storageType": "AzureFile",
+              "storageName": "[parameters('storageName')]"
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "value": "[parameters('name')]"
+    }
+  }
+}

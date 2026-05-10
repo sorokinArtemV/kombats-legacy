@@ -69,7 +69,7 @@ export class ChatHubManager {
       this.intentionalDisconnect = false;
 
       const conn = new HubConnectionBuilder()
-        .withUrl(`${config.bff.baseUrl}/chathub`, {
+        .withUrl(`${config().bff.baseUrl}/chathub`, {
           accessTokenFactory: this.accessTokenFactory,
         })
         .withAutomaticReconnect(RECONNECT_DELAYS)

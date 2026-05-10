@@ -1,0 +1,183 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "9340965264429900690"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "defaultValue": "keycloak",
+      "metadata": {
+        "description": "Container App name. Defaults to \"keycloak\". Becomes the public subdomain."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region."
+      }
+    },
+    "environmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Container Apps Environment."
+      }
+    },
+    "image": {
+      "type": "string",
+      "defaultValue": "quay.io/keycloak/keycloak:24.0",
+      "metadata": {
+        "description": "Keycloak image. Use the Quarkus-based image, NOT the legacy jboss/keycloak."
+      }
+    },
+    "postgresHost": {
+      "type": "string",
+      "metadata": {
+        "description": "Internal hostname of the Postgres Container App, e.g. postgres.internal.<env-domain>. No scheme, no port."
+      }
+    },
+    "postgresPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Postgres password for the keycloak DB user."
+      }
+    },
+    "keycloakAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Initial admin password for the Keycloak master realm."
+      }
+    },
+    "storageName": {
+      "type": "string",
+      "metadata": {
+        "description": "Logical name of the registered storage in the environment (output from env-storage.bicep). Used to mount realm.json."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[parameters('environmentId')]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "auto",
+            "allowInsecure": false
+          },
+          "secrets": [
+            {
+              "name": "postgres-password",
+              "value": "[parameters('postgresPassword')]"
+            },
+            {
+              "name": "admin-password",
+              "value": "[parameters('keycloakAdminPassword')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "keycloak",
+              "image": "[parameters('image')]",
+              "command": [
+                "/opt/keycloak/bin/kc.sh"
+              ],
+              "args": [
+                "start",
+                "--import-realm",
+                "--hostname-strict=false"
+              ],
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              },
+              "env": [
+                {
+                  "name": "KC_DB",
+                  "value": "postgres"
+                },
+                {
+                  "name": "KC_DB_URL",
+                  "value": "[format('jdbc:postgresql://{0}:5432/keycloak', parameters('postgresHost'))]"
+                },
+                {
+                  "name": "KC_DB_USERNAME",
+                  "value": "keycloak"
+                },
+                {
+                  "name": "KC_DB_PASSWORD",
+                  "secretRef": "postgres-password"
+                },
+                {
+                  "name": "KEYCLOAK_ADMIN",
+                  "value": "admin"
+                },
+                {
+                  "name": "KEYCLOAK_ADMIN_PASSWORD",
+                  "secretRef": "admin-password"
+                },
+                {
+                  "name": "KC_PROXY",
+                  "value": "edge"
+                },
+                {
+                  "name": "KC_HOSTNAME_STRICT",
+                  "value": "false"
+                },
+                {
+                  "name": "KC_HOSTNAME_STRICT_HTTPS",
+                  "value": "false"
+                }
+              ],
+              "volumeMounts": [
+                {
+                  "volumeName": "realm-import",
+                  "mountPath": "/opt/keycloak/data/import",
+                  "subPath": "keycloak"
+                }
+              ]
+            }
+          ],
+          "volumes": [
+            {
+              "name": "realm-import",
+              "storageType": "AzureFile",
+              "storageName": "[parameters('storageName')]"
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "value": "[parameters('name')]"
+    },
+    "fqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+    },
+    "issuerUrl": {
+      "type": "string",
+      "value": "[format('https://{0}/realms/kombats', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+    }
+  }
+}

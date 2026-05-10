@@ -92,7 +92,7 @@ export class BattleHubManager {
       this.intentionalDisconnect = false;
 
       const conn = new HubConnectionBuilder()
-        .withUrl(`${config.bff.baseUrl}/battlehub`, {
+        .withUrl(`${config().bff.baseUrl}/battlehub`, {
           accessTokenFactory: this.accessTokenFactory,
         })
         .withAutomaticReconnect(RECONNECT_DELAYS)

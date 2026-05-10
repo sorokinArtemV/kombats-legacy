@@ -1,82 +1,86 @@
-// ============================================================================
-// Kombats Demo — Main Bicep file
-// Scope: Resource Group (rg-kombats-demo)
-// ============================================================================
+// main.bicep
+// Subscription-scope orchestrator. Creates the Resource Group from
+// scratch and deploys the full Kombats demo stack inside it.
+// After `az group delete -g rg-kombats-demo`, this template recreates
+// everything. Nothing is expected to pre-exist.
+//
+// Deploy command:
+//   az deployment sub create --location westeurope `
+//     --template-file infra/main.bicep `
+//     --parameters infra/main.bicepparam `
+//     --name kombats-stack-deploy
+//
+// `--location` here is the location of the deployment metadata record
+// (subscription-scope deployments must live somewhere); resource
+// locations are set inside the workload module via `param location`.
 
-@description('Azure region for all resources')
-param location string = resourceGroup().location
+targetScope = 'subscription'
 
-@description('Project name, used in resource naming')
-param projectName string = 'kombats'
+// === PARAMETERS ===
 
-@description('Environment name')
-param env string = 'demo'
+@description('Name of the Resource Group to create (and put everything into).')
+param resourceGroupName string = 'rg-kombats-demo'
 
-// --- Tags applied to every resource ---
-var tags = {
-  project: projectName
-  environment: env
-  managedBy: 'bicep'
-}
+@description('Azure region for the RG and all resources inside it.')
+param location string = 'westeurope'
 
-// --- Log Analytics Workspace (required by Container Apps Environment) ---
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: 'log-${projectName}-${env}'
+@description('Image tag for backend services. Comes from Build.BuildId in CD, or "latest" for local deploys.')
+param imageTag string = 'latest'
+
+@description('GHCR username — package owner.')
+param ghcrUsername string
+
+@description('GHCR Personal Access Token with read:packages scope.')
+@secure()
+param ghcrToken string
+
+@description('Migrator image reference, e.g. ghcr.io/sorokinartemv/kombats-migrator:42')
+param migratorImage string
+
+@description('Postgres superuser password.')
+@secure()
+param postgresPassword string
+
+@description('Password for the keycloak DB user.')
+@secure()
+param keycloakDbPassword string
+
+@description('Keycloak master admin password.')
+@secure()
+param keycloakAdminPassword string
+
+// === RESOURCE GROUP ===
+
+resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: resourceGroupName
   location: location
-  tags: tags
-  properties: {
-    retentionInDays: 30
-    sku: {
-      name: 'PerGB2018'
-    }
+}
+
+// === WORKLOAD ===
+
+module workload 'workload.bicep' = {
+  scope: rg
+  name: 'kombats-workload'
+  params: {
+    location: location
+    imageTag: imageTag
+    ghcrUsername: ghcrUsername
+    ghcrToken: ghcrToken
+    migratorImage: migratorImage
+    postgresPassword: postgresPassword
+    keycloakDbPassword: keycloakDbPassword
+    keycloakAdminPassword: keycloakAdminPassword
   }
 }
 
-// --- Container Apps Environment ---
-resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: 'cae-${projectName}-${env}'
-  location: location
-  tags: tags
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
-      }
-    }
-  }
-}
+// === OUTPUTS (proxied from workload) ===
 
-// --- Outputs ---
-output logAnalyticsName string = logAnalytics.name
-output containerAppsEnvName string = containerAppsEnv.name
-output containerAppsEnvId string = containerAppsEnv.id
-
-// --- Budget alert (subscription-level, but scoped to this RG) ---
-resource budget 'Microsoft.Consumption/budgets@2024-08-01' = {
-  name: 'budget-${projectName}-${env}'
-  properties: {
-    timePeriod: {
-      startDate: '2026-05-01'
-      endDate: '2027-05-01'
-    }
-    timeGrain: 'Monthly'
-    amount: 50
-    category: 'Cost'
-    notifications: {
-      actual80: {
-        enabled: true
-        operator: 'GreaterThanOrEqualTo'
-        threshold: 80
-        contactEmails: ['artem.sorokin.va@gmail.com']
-      }
-      actual100: {
-        enabled: true
-        operator: 'GreaterThanOrEqualTo'
-        threshold: 100
-        contactEmails: ['artem.sorokin.va@gmail.com']
-      }
-    }
-  }
-}
+output resourceGroupName string = rg.name
+output bffUrl string = workload.outputs.bffUrl
+output keycloakUrl string = workload.outputs.keycloakUrl
+output keycloakIssuer string = workload.outputs.keycloakIssuer
+output swaUrl string = workload.outputs.swaUrl
+output swaName string = workload.outputs.swaName
+output storageAccountName string = workload.outputs.storageAccountName
+output shareName string = workload.outputs.shareName
+output environmentName string = workload.outputs.environmentName

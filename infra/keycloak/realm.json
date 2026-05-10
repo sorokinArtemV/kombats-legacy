@@ -75,14 +75,12 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:5173/*",
-        "http://localhost:5000/*",
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "__SWA_ORIGIN__/*"
       ],
       "webOrigins": [
-        "http://localhost:5173",
-        "http://localhost:5000",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "__SWA_ORIGIN__"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -95,7 +93,7 @@
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5000/*##http://localhost:5173/*",
+        "post.logout.redirect.uris": "http://localhost:3000/*##__SWA_ORIGIN__/*",
         "pkce.code.challenge.method": "S256"
       },
       "fullScopeAllowed": true,
@@ -137,18 +135,18 @@
       "firstName": "Artem",
       "lastName": "Dev",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "111111", "temporary": false }
       ]
     },
     {
-      "username": "polina",
+      "username": "kazumi",
       "enabled": true,
       "emailVerified": true,
-      "email": "polina@kombats.local",
+      "email": "kazumi@kombats.local",
       "firstName": "Polina",
       "lastName": "Dev",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "111111", "temporary": false }
       ]
     },
     {
@@ -159,7 +157,7 @@
       "firstName": "Alice",
       "lastName": "Dev",
       "credentials": [
-        { "type": "password", "value": "password", "temporary": false }
+        { "type": "password", "value": "111111", "temporary": false }
       ]
     },
     {
