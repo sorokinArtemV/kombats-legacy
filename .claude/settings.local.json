@@ -25,7 +25,16 @@
       "PowerShell(az containerapp *)",
       "PowerShell(foreach \\($a in @\\('battle','players','matchmaking','chat','keycloak','postgres','redis','rabbitmq'\\)\\) { $st = az containerapp replica list -g rg-kombats-demo -n $a --query \"[0].{state:properties.runningState, container:properties.containers[0].runningState}\" -o json 2>$null; \"$a -> $st\" })",
       "PowerShell($apps = @\\('bff', 'battle', 'players', 'matchmaking', 'chat'\\); for \\($i = 0; $i -lt 12; $i++\\) { $allUp = $true; foreach \\($app in $apps\\) { $st = az containerapp show -g rg-kombats-demo -n $app --query \"properties.runningStatus\" -o tsv; Write-Host \"$app = $st\"; if \\($st -ne 'Running'\\) { $allUp = $false } }; if \\($allUp\\) { Write-Host \"All apps Running\"; break }; Write-Host \"---\"; Start-Sleep -Seconds 15 })",
-      "PowerShell(foreach \\($a in @\\('bff','battle','players','matchmaking','chat'\\)\\) { $r = az containerapp replica list -g rg-kombats-demo -n $a --query \"[0].{state:properties.runningState, container:properties.containers[0].runningState}\" -o json 2>$null | ConvertFrom-Json; \"{0,-12} state={1,-11} container={2}\" -f $a, $r.state, $r.container })"
+      "PowerShell(foreach \\($a in @\\('bff','battle','players','matchmaking','chat'\\)\\) { $r = az containerapp replica list -g rg-kombats-demo -n $a --query \"[0].{state:properties.runningState, container:properties.containers[0].runningState}\" -o json 2>$null | ConvertFrom-Json; \"{0,-12} state={1,-11} container={2}\" -f $a, $r.state, $r.container })",
+      "PowerShell(az bicep build *)",
+      "PowerShell(npm install *)",
+      "PowerShell(Set-Location D:\\\\Programming\\\\Sharp\\\\Kombats\\\\src\\\\Kombats.Client; $output = & .\\\\node_modules\\\\.bin\\\\tsc.cmd --noEmit -p tsconfig.app.json 2>&1; \"EXIT=$LASTEXITCODE\"; \"OUTPUT_COUNT=$\\($output.Count\\)\"; $output | Select-Object -First 50)",
+      "Bash(echo \"---EXIT---$?\")",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Bash(docker build *)",
+      "Bash(docker rmi *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

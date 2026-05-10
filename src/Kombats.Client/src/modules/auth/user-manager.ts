@@ -9,8 +9,8 @@ import { config } from '@/config';
 const inMemoryStorage = new InMemoryWebStorage();
 
 export const userManager = new UserManager({
-  authority: config.keycloak.authority,
-  client_id: config.keycloak.clientId,
+  authority: config().keycloak.authority,
+  client_id: config().keycloak.clientId,
   redirect_uri: `${window.location.origin}/auth/callback`,
   // Dedicated silent-renew endpoint. main.tsx short-circuits on this path and
   // calls `signinSilentCallback()` instead of rendering the app. Used both for

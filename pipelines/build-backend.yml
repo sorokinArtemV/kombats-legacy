@@ -9,6 +9,8 @@ trigger:
   paths:
     include:
       - src/**
+      - infra/keycloak/**
+      - infra/keycloak-themes/**
       - pipelines/build-backend.yml
 
 parameters:
@@ -25,6 +27,8 @@ parameters:
         dockerfile: src/Kombats.Matchmaking/Kombats.Matchmaking.Bootstrap/Dockerfile
       - name: chat
         dockerfile: src/Kombats.Chat/Kombats.Chat.Bootstrap/Dockerfile
+      - name: keycloak
+        dockerfile: infra/keycloak/Dockerfile
 
 variables:
   - group: ghcr-credentials

@@ -1,13 +1,13 @@
 // main.bicepparam
-// Parameter values for main.bicep.
-// Non-secret values are inline. Secrets come from environment variables
+// Parameter values for main.bicep (subscription-scope orchestrator).
+// Non-secret values are inline; secrets come from environment variables
 // via readEnvironmentVariable, so this file can be safely committed to git.
 
 using './main.bicep'
 
 // === NON-SECRET PARAMETERS ===
 
-param environmentName = 'cae-kombats-demo'
+param resourceGroupName = 'rg-kombats-demo'
 param location = 'westeurope'
 param ghcrUsername = 'sorokinartemv'
 
@@ -17,7 +17,6 @@ param ghcrUsername = 'sorokinartemv'
 param imageTag = readEnvironmentVariable('IMAGE_TAG', 'latest')
 
 // Migrator image — separate from backend services, built from src/Kombats.Migrator/Dockerfile.
-// Defaults to 'latest' for local deploys.
 param migratorImage = readEnvironmentVariable(
   'MIGRATOR_IMAGE',
   'ghcr.io/sorokinartemv/kombats-migrator:latest'
@@ -33,13 +32,3 @@ param ghcrToken = readEnvironmentVariable('GHCR_TOKEN')
 param postgresPassword = readEnvironmentVariable('POSTGRES_PASSWORD')
 param keycloakDbPassword = readEnvironmentVariable('KEYCLOAK_DB_PASSWORD')
 param keycloakAdminPassword = readEnvironmentVariable('KEYCLOAK_ADMIN_PASSWORD')
-
-// === CORS ===
-
-// Wildcard for the on-demand demo. For prod, replace with the specific
-// frontend origins, e.g. ['https://kombats.example.com'].
-param corsAllowedOrigins = [
-  'http://localhost:5173'
-  'http://localhost:5000'
-  'http://localhost:3000'
-]

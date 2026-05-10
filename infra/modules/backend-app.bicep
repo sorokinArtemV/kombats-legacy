@@ -36,6 +36,12 @@ param envVars array = []
 @description('Secret environment variables. Array of { name, value }. Each becomes a Container App secret and is exposed as an env var via secretRef.')
 param secretEnvVars array = []
 
+@description('Minimum replicas. 1 for always-on (e.g. BFF for SignalR UX), 0 for scale-to-zero (cold start on first request).')
+param minReplicas int = 0
+
+@description('Maximum replicas. Keep 1 for SignalR services without a backplane (sticky session is automatic at one replica).')
+param maxReplicas int = 1
+
 // === VARIABLES ===
 
 // Build the secrets array for Container App configuration:
@@ -56,9 +62,12 @@ var allSecrets = concat(
 )
 
 // Build env entries that reference secrets via secretRef.
-// Convention: secret name 'postgres-password' becomes env var POSTGRES_PASSWORD.
+// If the entry has an explicit `envName`, use it as-is — required for
+// IConfiguration paths like 'ConnectionStrings__PostgresConnection' that
+// don't fit the UPPER_SNAKE convention. Otherwise fall back to the default:
+// secret name 'postgres-password' becomes env var POSTGRES_PASSWORD.
 var secretEnvRefs = [for s in secretEnvVars: {
-  name: toUpper(replace(s.name, '-', '_'))
+  name: contains(s, 'envName') ? s.envName : toUpper(replace(s.name, '-', '_'))
   secretRef: s.name
 }]
 
@@ -99,8 +108,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 1
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
       }
     }
   }

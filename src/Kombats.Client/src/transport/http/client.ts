@@ -1,7 +1,7 @@
 import { config } from '@/config';
 import type { ApiError } from '@/types/api';
 
-const BASE_URL = config.bff.baseUrl;
+const BASE_URL = config().bff.baseUrl;
 
 // ---------------------------------------------------------------------------
 // Dependency injection — wired by app/ layer at startup

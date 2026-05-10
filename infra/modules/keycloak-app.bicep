@@ -23,8 +23,15 @@ param location string
 @description('Resource ID of the Container Apps Environment.')
 param environmentId string
 
-@description('Keycloak image. Use the Quarkus-based image, NOT the legacy jboss/keycloak.')
+@description('Keycloak image. Use the Quarkus-based image, NOT the legacy jboss/keycloak. Defaults to the custom GHCR image with the kombats theme baked in.')
 param image string = 'quay.io/keycloak/keycloak:24.0'
+
+@description('GHCR username — package owner. Required when pulling the custom image from ghcr.io.')
+param ghcrUsername string
+
+@description('GHCR Personal Access Token with read:packages scope.')
+@secure()
+param ghcrToken string
 
 @description('Internal hostname of the Postgres Container App, e.g. postgres.internal.<env-domain>. No scheme, no port.')
 param postgresHost string
@@ -55,7 +62,18 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'auto'
         allowInsecure: false
       }
+      registries: [
+        {
+          server: 'ghcr.io'
+          username: ghcrUsername
+          passwordSecretRef: 'ghcr-token'
+        }
+      ]
       secrets: [
+        {
+          name: 'ghcr-token'
+          value: ghcrToken
+        }
         {
           name: 'postgres-password'
           value: postgresPassword

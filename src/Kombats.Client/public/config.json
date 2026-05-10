@@ -1,0 +1,5 @@
+{
+  "keycloakAuthority": "http://localhost:8080/realms/kombats",
+  "keycloakClientId": "kombats-web",
+  "bffBaseUrl": "http://localhost:5000"
+}
