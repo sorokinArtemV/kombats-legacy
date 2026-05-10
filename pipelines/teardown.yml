@@ -1,0 +1,54 @@
+﻿# pipelines/teardown.yml
+# CD pipeline: tear down the Kombats demo stack.
+# Manual trigger only. Deletes the entire resource group via az group delete.
+# Mirror of deploy-stack.yml in spirit — same auth, same environment-gated approach,
+# but destructive instead of constructive.
+
+trigger: none
+pr: none
+
+variables:
+  - name: RESOURCE_GROUP
+    value: rg-kombats-demo
+
+stages:
+  - stage: Teardown
+    displayName: 'Teardown Kombats stack'
+    jobs:
+      - deployment: teardown
+        displayName: 'Teardown kombats-demo'
+        environment: kombats-demo-teardown
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Delete resource group'
+                  inputs:
+                    azureSubscription: azure-kombats
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      echo "About to delete resource group: $(RESOURCE_GROUP)"
+                      echo "This is destructive and will remove ALL resources inside."
+                      echo ""
+
+                      # Check if RG exists — if not, exit gracefully (idempotent).
+                      if ! az group show -n $(RESOURCE_GROUP) --output none 2>/dev/null; then
+                        echo "Resource group $(RESOURCE_GROUP) does not exist. Nothing to delete."
+                        exit 0
+                      fi
+
+                      az group delete \
+                        --name $(RESOURCE_GROUP) \
+                        --yes \
+                        --no-wait
+
+                      echo ""
+                      echo "Delete initiated. Resources will be removed in background (~5-10 min)."
+                      echo "GHCR images, Variable Groups, Service Connection, and Environments are NOT touched."
+                      echo "To redeploy: trigger kombats-cd-deploy."

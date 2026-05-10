@@ -34,7 +34,12 @@
       "Bash(docker info *)",
       "Bash(docker build *)",
       "Bash(docker rmi *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "PowerShell(az pipelines delete *)",
+      "PowerShell(az pipelines show *)"
     ]
   }
 }
