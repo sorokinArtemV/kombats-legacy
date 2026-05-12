@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Kombats.Abstractions;
 using Kombats.Matchmaking.Application.Abstractions;
 using Kombats.Matchmaking.Domain;
@@ -8,6 +9,11 @@ namespace Kombats.Matchmaking.Application.UseCases.ExecuteMatchmakingTick;
 internal sealed class ExecuteMatchmakingTickHandler
     : ICommandHandler<ExecuteMatchmakingTickCommand, MatchmakingTickResult>
 {
+    // Registered for OTLP export by KombatsObservabilityExtensions
+    // (AddSource("Kombats.matchmaking") via meterName). Listener-less calls
+    // are no-ops; instrumentation overhead is sub-microsecond per pair.
+    private static readonly ActivitySource _activitySource = new("Kombats.matchmaking");
+
     private readonly IMatchQueueStore _queueStore;
     private readonly IMatchRepository _matchRepository;
     private readonly IPlayerCombatProfileRepository _profileRepository;
@@ -37,8 +43,14 @@ internal sealed class ExecuteMatchmakingTickHandler
     public async Task<Result<MatchmakingTickResult>> HandleAsync(
         ExecuteMatchmakingTickCommand cmd, CancellationToken ct)
     {
+        using var tickActivity = _activitySource.StartActivity("matchmaking.pair.tick");
+
         // Atomically pop a pair from Redis queue
-        var pair = await _queueStore.TryPopPairAsync(cmd.Variant, ct);
+        (Guid, Guid)? pair;
+        using (var a = _activitySource.StartActivity("matchmaking.pair.try-pop"))
+        {
+            pair = await _queueStore.TryPopPairAsync(cmd.Variant, ct);
+        }
         if (pair == null)
         {
             return new MatchmakingTickResult(false);
@@ -47,8 +59,16 @@ internal sealed class ExecuteMatchmakingTickHandler
         var (playerAId, playerBId) = pair.Value;
 
         // Fetch combat profiles from local projection
-        var profileA = await _profileRepository.GetByIdentityIdAsync(playerAId, ct);
-        var profileB = await _profileRepository.GetByIdentityIdAsync(playerBId, ct);
+        PlayerCombatProfile? profileA;
+        using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-1"))
+        {
+            profileA = await _profileRepository.GetByIdentityIdAsync(playerAId, ct);
+        }
+        PlayerCombatProfile? profileB;
+        using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-2"))
+        {
+            profileB = await _profileRepository.GetByIdentityIdAsync(playerBId, ct);
+        }
 
         if (profileA == null || profileB == null)
         {
@@ -82,14 +102,26 @@ internal sealed class ExecuteMatchmakingTickHandler
             ToSnapshot(profileA),
             ToSnapshot(profileB));
 
-        await _battlePublisher.PublishAsync(request, ct);
+        using (var a = _activitySource.StartActivity("matchmaking.pair.publish-create-battle"))
+        {
+            await _battlePublisher.PublishAsync(request, ct);
+        }
 
         // Atomic save: match insert + outbox message
-        await _unitOfWork.SaveChangesAsync(ct);
+        using (var a = _activitySource.StartActivity("matchmaking.pair.save-changes"))
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
 
         // Update Redis status for both players to Matched
-        await _statusStore.SetMatchedAsync(playerAId, matchId, battleId, cmd.Variant, ct);
-        await _statusStore.SetMatchedAsync(playerBId, matchId, battleId, cmd.Variant, ct);
+        using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-1"))
+        {
+            await _statusStore.SetMatchedAsync(playerAId, matchId, battleId, cmd.Variant, ct);
+        }
+        using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-2"))
+        {
+            await _statusStore.SetMatchedAsync(playerBId, matchId, battleId, cmd.Variant, ct);
+        }
 
         _logger.LogInformation(
             "Match created: MatchId={MatchId}, BattleId={BattleId}, PlayerA={PlayerAId}, PlayerB={PlayerBId}",
