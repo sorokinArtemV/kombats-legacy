@@ -105,11 +105,17 @@ internal sealed class MatchmakingLeaseService
         CancellationTokenSource leaseLostSource,
         CancellationToken stoppingToken)
     {
+        // Task.Delay must wake on either token; binding to stoppingToken alone
+        // means a per-tick leaseLostSource.Cancel() can't shorten the delay,
+        // so end-of-tick cleanup waits up to RenewalIntervalMs (~1.67 s).
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+            stoppingToken, leaseLostSource.Token);
+
         try
         {
             while (!stoppingToken.IsCancellationRequested && !leaseLostSource.Token.IsCancellationRequested)
             {
-                await Task.Delay(RenewalIntervalMs, stoppingToken);
+                await Task.Delay(RenewalIntervalMs, linked.Token);
 
                 if (stoppingToken.IsCancellationRequested || leaseLostSource.Token.IsCancellationRequested)
                     break;
