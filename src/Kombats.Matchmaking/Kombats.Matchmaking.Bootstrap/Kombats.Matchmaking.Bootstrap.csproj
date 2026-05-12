@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Kombats.Matchmaking.Contracts\Kombats.Matchmaking.Contracts.csproj" />
     <ProjectReference Include="..\..\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj" />
     <ProjectReference Include="..\..\Kombats.Common\Kombats.Messaging\Kombats.Messaging.csproj" />
+    <ProjectReference Include="..\..\Kombats.Common\Kombats.Observability\Kombats.Observability.csproj" />
   </ItemGroup>
 
   <ItemGroup>

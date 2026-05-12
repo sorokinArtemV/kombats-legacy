@@ -28,7 +28,11 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.3" />
   </ItemGroup>
@@ -64,12 +68,16 @@
 
   <ItemGroup Label="OpenTelemetry">
     <PackageVersion Include="OpenTelemetry" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="1.10.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.12.0-beta.1" />
+    <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="HTTP Resilience">
@@ -78,6 +86,11 @@
 
   <ItemGroup Label="DI Registration">
     <PackageVersion Include="Scrutor" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Load Testing">
+    <PackageVersion Include="NBomber" Version="6.4.0" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.7" />
   </ItemGroup>
 
   <ItemGroup Label="Health Checks">

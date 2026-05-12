@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Kombats.Battle.Domain.Engine;
 using Kombats.Battle.Domain.Events;
 using Kombats.Battle.Domain.Model;
@@ -6,6 +7,7 @@ using Kombats.Battle.Application.Models;
 using Kombats.Battle.Application.Ports;
 using Kombats.Battle.Application.Mapping;
 using Kombats.Battle.Application.ReadModels;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 
 namespace Kombats.Battle.Application.UseCases.Turns;
@@ -24,6 +26,7 @@ public sealed class BattleTurnAppService
     private readonly IActionIntake _actionIntake;
     private readonly IBattleTurnHistoryStore _turnHistoryStore;
     private readonly IClock _clock;
+    private readonly KombatsMetrics _metrics;
     private readonly ILogger<BattleTurnAppService> _logger;
 
     public BattleTurnAppService(
@@ -35,6 +38,7 @@ public sealed class BattleTurnAppService
         IActionIntake actionIntake,
         IBattleTurnHistoryStore turnHistoryStore,
         IClock clock,
+        KombatsMetrics metrics,
         ILogger<BattleTurnAppService> logger)
     {
         _stateStore = stateStore;
@@ -45,6 +49,7 @@ public sealed class BattleTurnAppService
         _actionIntake = actionIntake;
         _turnHistoryStore = turnHistoryStore;
         _clock = clock;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -159,39 +164,47 @@ public sealed class BattleTurnAppService
     /// </summary>
     public async Task<bool> ResolveTurnAsync(Guid battleId, CancellationToken cancellationToken = default)
     {
-        // Phase 1: Load and validate state
-        var (state, alreadyResolving) = await LoadAndValidateStateForResolution(battleId, cancellationToken);
-        if (state == null)
-            return false;
-
-        var turnIndex = state.TurnIndex;
-
-        // Phase 2: Atomic CAS transition to Resolving (skip if already in Resolving — recovery path)
-        if (!alreadyResolving)
+        var sw = Stopwatch.StartNew();
+        try
         {
-            var markedResolving = await _stateStore.TryMarkTurnResolvingAsync(battleId, turnIndex, cancellationToken);
-            if (!markedResolving)
-            {
-                _logger.LogWarning(
-                    "Failed to mark turn {TurnIndex} as Resolving for BattleId: {BattleId}. May be duplicate or invalid state.",
-                    turnIndex, battleId);
+            // Phase 1: Load and validate state
+            var (state, alreadyResolving) = await LoadAndValidateStateForResolution(battleId, cancellationToken);
+            if (state == null)
                 return false;
+
+            var turnIndex = state.TurnIndex;
+
+            // Phase 2: Atomic CAS transition to Resolving (skip if already in Resolving — recovery path)
+            if (!alreadyResolving)
+            {
+                var markedResolving = await _stateStore.TryMarkTurnResolvingAsync(battleId, turnIndex, cancellationToken);
+                if (!markedResolving)
+                {
+                    _logger.LogWarning(
+                        "Failed to mark turn {TurnIndex} as Resolving for BattleId: {BattleId}. May be duplicate or invalid state.",
+                        turnIndex, battleId);
+                    return false;
+                }
             }
+            else
+            {
+                _logger.LogInformation(
+                    "Retrying resolution for BattleId: {BattleId} stuck in Resolving phase at TurnIndex: {TurnIndex}",
+                    battleId, turnIndex);
+            }
+
+            // Phase 3: Load actions and run domain engine
+            var resolutionResult = await LoadActionsAndResolve(battleId, turnIndex, state, cancellationToken);
+            if (resolutionResult == null)
+                return false;
+
+            // Phase 4: Dispatch result based on domain events
+            return await DispatchResolutionResult(battleId, turnIndex, state, resolutionResult, cancellationToken);
         }
-        else
+        finally
         {
-            _logger.LogInformation(
-                "Retrying resolution for BattleId: {BattleId} stuck in Resolving phase at TurnIndex: {TurnIndex}",
-                battleId, turnIndex);
+            _metrics.TurnResolutionDurationMs.Record(sw.Elapsed.TotalMilliseconds);
         }
-
-        // Phase 3: Load actions and run domain engine
-        var resolutionResult = await LoadActionsAndResolve(battleId, turnIndex, state, cancellationToken);
-        if (resolutionResult == null)
-            return false;
-
-        // Phase 4: Dispatch result based on domain events
-        return await DispatchResolutionResult(battleId, turnIndex, state, resolutionResult, cancellationToken);
     }
 
     /// <summary>
@@ -470,6 +483,11 @@ public sealed class BattleTurnAppService
             // and the event never reaches RabbitMQ. Idempotency is protected upstream by the
             // Redis EndedNow gate, which ensures this branch runs at most once per battle.
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Match the active_battles increment fired when Turn 1 opened in
+            // BattleLifecycleAppService.HandleBattleCreatedAsync. Only fires here on the
+            // EndedNow branch — AlreadyEnded paths are duplicates and would double-decrement.
+            _metrics.ActiveBattles.Add(-1);
 
             _logger.LogInformation(
                 "Battle {BattleId} ended. Reason: {Reason}, Winner: {WinnerPlayerId}",

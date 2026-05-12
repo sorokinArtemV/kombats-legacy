@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Kombats.Battle\Kombats.Battle.Realtime.Contracts\Kombats.Battle.Realtime.Contracts.csproj" />
+    <ProjectReference Include="..\..\Kombats.Common\Kombats.Observability\Kombats.Observability.csproj" />
   </ItemGroup>
 
 </Project>

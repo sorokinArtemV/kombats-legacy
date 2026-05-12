@@ -20,12 +20,11 @@ using Kombats.Players.Infrastructure.Messaging;
 using Kombats.Players.Infrastructure.Messaging.Consumers;
 using Kombats.Players.Infrastructure.Persistence.EF;
 using Kombats.Players.Infrastructure.Persistence.Repository;
+using Kombats.Observability;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Kombats.Players.Api.Middleware;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -113,22 +112,8 @@ var postgresConnection = builder.Configuration.GetConnectionString("PostgresConn
 builder.Services.AddHealthChecks()
     .AddNpgSql(postgresConnection, name: "postgresql");
 
-// OpenTelemetry tracing
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("Kombats.Players"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSource("Npgsql");
-
-        string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-        if (!string.IsNullOrEmpty(otlpEndpoint))
-        {
-            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
-        }
-    });
+// Observability (OpenTelemetry tracing + metrics + KombatsMetrics singleton)
+builder.Services.AddKombatsObservability(builder.Configuration, "players");
 
 // Messaging (Kombats.Messaging with transactional outbox — AD-01)
 builder.Services.AddMessaging<PlayersDbContext>(

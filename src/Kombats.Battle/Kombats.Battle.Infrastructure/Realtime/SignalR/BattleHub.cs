@@ -1,6 +1,7 @@
 using Kombats.Battle.Application.UseCases.Lifecycle;
 using Kombats.Battle.Application.UseCases.Turns;
 using Kombats.Battle.Realtime.Contracts;
+using Kombats.Observability;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -17,16 +18,25 @@ public class BattleHub : Hub
 {
     private readonly BattleLifecycleAppService _lifecycleService;
     private readonly BattleTurnAppService _turnAppService;
+    private readonly KombatsMetrics _metrics;
     private readonly ILogger<BattleHub> _logger;
 
     public BattleHub(
         BattleLifecycleAppService lifecycleService,
         BattleTurnAppService turnAppService,
+        KombatsMetrics metrics,
         ILogger<BattleHub> logger)
     {
         _lifecycleService = lifecycleService;
         _turnAppService = turnAppService;
+        _metrics = metrics;
         _logger = logger;
+    }
+
+    public override Task OnConnectedAsync()
+    {
+        _metrics.ActiveSignalRConnections.Add(1);
+        return base.OnConnectedAsync();
     }
 
     public async Task<BattleSnapshotRealtime> JoinBattle(Guid battleId)
@@ -71,6 +81,7 @@ public class BattleHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        _metrics.ActiveSignalRConnections.Add(-1);
         _logger.LogInformation("Client disconnected: ConnectionId: {ConnectionId}, Exception: {Exception}", Context.ConnectionId, exception?.Message);
         await base.OnDisconnectedAsync(exception);
     }

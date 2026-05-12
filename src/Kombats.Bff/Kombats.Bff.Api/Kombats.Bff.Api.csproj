@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kombats.Bff.Application\Kombats.Bff.Application.csproj" />
+    <ProjectReference Include="..\..\Kombats.Common\Kombats.Observability\Kombats.Observability.csproj" />
   </ItemGroup>
 
 </Project>

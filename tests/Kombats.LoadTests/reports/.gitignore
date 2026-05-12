@@ -1,0 +1,6 @@
+# Generated NBomber reports are not committed.
+# Keep only the curated baseline-sample/ subtree.
+*
+!.gitignore
+!baseline-sample/
+!baseline-sample/**

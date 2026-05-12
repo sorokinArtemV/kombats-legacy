@@ -21,11 +21,10 @@ using Kombats.Battle.Infrastructure.Rules;
 using Kombats.Battle.Infrastructure.State.Redis;
 using Kombats.Battle.Infrastructure.Time;
 using Kombats.Messaging.DependencyInjection;
+using Kombats.Observability;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 
@@ -152,22 +151,10 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(postgresConnection, name: "postgresql")
     .AddRedis(redisConnectionString, name: "redis");
 
-// OpenTelemetry tracing
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("Kombats.Battle"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddSource("Npgsql")
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation();
-
-        string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-        if (!string.IsNullOrEmpty(otlpEndpoint))
-        {
-            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
-        }
-    });
+// Observability (OpenTelemetry tracing + metrics + KombatsMetrics singleton).
+// Redis tracing instrumentation discovers IConnectionMultiplexer via DI, so this call
+// must come after the IConnectionMultiplexer registration above.
+builder.Services.AddKombatsObservability(builder.Configuration, "battle");
 
 // Background workers
 builder.Services.Configure<TurnDeadlineWorkerOptions>(

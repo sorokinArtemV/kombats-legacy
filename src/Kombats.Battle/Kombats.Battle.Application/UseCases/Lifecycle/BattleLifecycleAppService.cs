@@ -3,6 +3,7 @@ using Kombats.Battle.Domain.Rules;
 using Kombats.Battle.Application.Models;
 using Kombats.Battle.Application.Ports;
 using Kombats.Battle.Application.ReadModels;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 
 namespace Kombats.Battle.Application.UseCases.Lifecycle;
@@ -18,6 +19,7 @@ public sealed class BattleLifecycleAppService
     private readonly IRulesetProvider _rulesetProvider;
     private readonly ISeedGenerator _seedGenerator;
     private readonly IClock _clock;
+    private readonly KombatsMetrics _metrics;
     private readonly ILogger<BattleLifecycleAppService> _logger;
 
     public BattleLifecycleAppService(
@@ -26,6 +28,7 @@ public sealed class BattleLifecycleAppService
         IRulesetProvider rulesetProvider,
         ISeedGenerator seedGenerator,
         IClock clock,
+        KombatsMetrics metrics,
         ILogger<BattleLifecycleAppService> logger)
     {
         _stateStore = stateStore;
@@ -33,6 +36,7 @@ public sealed class BattleLifecycleAppService
         _rulesetProvider = rulesetProvider;
         _seedGenerator = seedGenerator;
         _clock = clock;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -126,6 +130,10 @@ public sealed class BattleLifecycleAppService
             // Use the computed deadlineUtc we passed to TryOpenTurnAsync (Lua stores exactly the passed deadline)
             await _notifier.NotifyBattleReadyAsync(battleId, playerAId, playerBId, playerAName, playerBName, cancellationToken);
             await _notifier.NotifyTurnOpenedAsync(battleId, 1, turn1Deadline, cancellationToken);
+
+            // Match increment to the EndedNow decrement in BattleTurnAppService.CommitAndNotifyBattleEnded.
+            // Gated on isTurnOpened (the convergence gate) so replays of an already-opened battle do not double-count.
+            _metrics.ActiveBattles.Add(1);
 
             _logger.LogInformation(
                 "Battle {BattleId} initialized and Turn 1 opened. RulesetVersion: {RulesetVersion}, Seed: {Seed}, Deadline: {DeadlineUtc}",

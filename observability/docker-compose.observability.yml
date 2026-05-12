@@ -1,0 +1,97 @@
+# Kombats local-only observability stack.
+#
+# Run ALL invocations from the repo root. Volume mounts are anchored to
+# ${PWD}/observability/... so they resolve correctly whether this file is
+# loaded alone or merged with the root docker-compose.yml — Compose's
+# automatic "project directory" rule (which uses the first -f file's
+# directory) does not apply uniformly across both modes, so we pin it
+# explicitly via ${PWD}.
+#
+# Standalone — backends run from your IDE:
+#   docker compose -f observability/docker-compose.observability.yml up -d
+#   # IDE-launched services read OtlpEndpoint=http://localhost:4317 from
+#   # each service's appsettings.Development.json.
+#
+# Merged with the root stack — everything in Docker:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f observability/docker-compose.observability.yml \
+#     -f observability/docker-compose.observability.override.yml \
+#     up -d
+#   # The .override.yml file injects
+#   # OpenTelemetry__OtlpEndpoint=http://otel-collector:4317 into each
+#   # backend service so they reach the collector via its container name.
+#
+# This file is intentionally not referenced from docker-compose.override.yml
+# so the existing `docker compose up` flow at the repo root keeps working
+# unchanged.
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    container_name: kombats-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ${PWD}/observability/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC (services -> collector)
+      - "4318:4318"   # OTLP HTTP (services -> collector)
+      - "8889:8889"   # Prometheus scrape endpoint (collector -> prometheus)
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: kombats-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      # Internal OTLP receiver stays on the default 4317/4318 inside the
+      # container; the collector reaches it as `jaeger:4317`. We deliberately
+      # do not expose those ports to the host to avoid colliding with
+      # otel-collector's published 4317/4318.
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: kombats-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=24h"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ${PWD}/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: kombats-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ${PWD}/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ${PWD}/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      # 3001 deliberately: the Vite dev server in src/Kombats.Client/ pins to 3000.
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - jaeger
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

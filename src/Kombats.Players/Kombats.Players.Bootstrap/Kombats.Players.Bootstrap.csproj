@@ -21,6 +21,7 @@
         <ProjectReference Include="..\Kombats.Players.Contracts\Kombats.Players.Contracts.csproj" />
         <ProjectReference Include="..\..\Kombats.Common\Kombats.Abstractions\Kombats.Abstractions.csproj" />
         <ProjectReference Include="..\..\Kombats.Common\Kombats.Messaging\Kombats.Messaging.csproj" />
+        <ProjectReference Include="..\..\Kombats.Common\Kombats.Observability\Kombats.Observability.csproj" />
     </ItemGroup>
 
 </Project>

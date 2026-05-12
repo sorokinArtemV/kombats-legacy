@@ -1,0 +1,32 @@
+# Backend-service overrides that route the .NET services to the in-cluster
+# OTel collector. Only meaningful when merged with both the root
+# docker-compose.yml and observability/docker-compose.observability.yml —
+# this file alone has no service definitions and will fail to start standalone.
+#
+# Usage:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f observability/docker-compose.observability.yml \
+#     -f observability/docker-compose.observability.override.yml \
+#     up -d
+
+services:
+  bff:
+    environment:
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"
+
+  players:
+    environment:
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"
+
+  matchmaking:
+    environment:
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"
+
+  battle:
+    environment:
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"
+
+  chat:
+    environment:
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"

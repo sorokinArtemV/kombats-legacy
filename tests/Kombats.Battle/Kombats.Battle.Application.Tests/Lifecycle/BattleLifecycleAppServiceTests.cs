@@ -5,6 +5,7 @@ using Kombats.Battle.Application.ReadModels;
 using Kombats.Battle.Application.UseCases.Lifecycle;
 using Kombats.Battle.Domain.Model;
 using Kombats.Battle.Domain.Rules;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -38,6 +39,7 @@ public class BattleLifecycleAppServiceTests
         _service = new BattleLifecycleAppService(
             _stateStore, _notifier, _rulesetProvider,
             _seedGenerator, _clock,
+            new KombatsMetrics("test"),
             Substitute.For<ILogger<BattleLifecycleAppService>>());
     }
 

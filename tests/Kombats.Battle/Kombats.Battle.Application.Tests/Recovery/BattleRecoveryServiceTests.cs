@@ -7,6 +7,7 @@ using Kombats.Battle.Domain.Engine;
 using Kombats.Battle.Domain.Model;
 using Kombats.Battle.Domain.Results;
 using Kombats.Battle.Domain.Rules;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -50,6 +51,7 @@ public class BattleRecoveryServiceTests
             _actionIntake,
             Substitute.For<IBattleTurnHistoryStore>(),
             _clock,
+            new KombatsMetrics("test"),
             Substitute.For<ILogger<BattleTurnAppService>>());
 
         _service = new BattleRecoveryService(

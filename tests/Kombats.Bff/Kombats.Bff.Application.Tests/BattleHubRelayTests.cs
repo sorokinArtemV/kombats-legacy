@@ -3,6 +3,7 @@ using Kombats.Bff.Application.Clients;
 using Kombats.Bff.Application.Narration;
 using Kombats.Bff.Application.Narration.Templates;
 using Kombats.Bff.Application.Relay;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -39,6 +40,7 @@ public sealed class BattleHubRelayTests
             Options.Create(CreateServicesOptions()),
             _sender,
             _pipeline,
+            new KombatsMetrics("test"),
             Substitute.For<ILogger<BattleHubRelay>>());
     }
 
@@ -69,6 +71,7 @@ public sealed class BattleHubRelayTests
             Options.Create(CreateServicesOptions("http://unreachable-host:9999")),
             Substitute.For<IFrontendBattleSender>(),
             _pipeline,
+            new KombatsMetrics("test"),
             Substitute.For<ILogger<BattleHubRelay>>());
 
         Func<Task> act = () => relay.JoinBattleAsync(

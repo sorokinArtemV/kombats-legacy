@@ -23,12 +23,11 @@ using Kombats.Chat.Infrastructure.Redis;
 using Kombats.Chat.Infrastructure.Workers;
 using Kombats.Chat.Infrastructure.Services;
 using Kombats.Messaging.DependencyInjection;
+using Kombats.Observability;
 using Kombats.Players.Contracts;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 
@@ -134,23 +133,6 @@ builder.Services.AddHealthChecks()
     .AddRedis(redisHealthConnection, name: "redis")
     .AddRabbitMQ(name: "rabbitmq");
 
-// OpenTelemetry tracing
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("Kombats.Chat"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSource("Npgsql");
-
-        string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-        if (!string.IsNullOrEmpty(otlpEndpoint))
-        {
-            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
-        }
-    });
-
 // === Batch 1: EF Core + Repositories + Handlers ===
 
 builder.Services.AddDbContext<ChatDbContext>(options =>
@@ -180,6 +162,11 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379,abortConnect=false";
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(redisConnectionString));
+
+// Observability (OpenTelemetry tracing + metrics + KombatsMetrics singleton).
+// Registered after IConnectionMultiplexer so the StackExchange.Redis tracing
+// instrumentation can pick it up via DI.
+builder.Services.AddKombatsObservability(builder.Configuration, "chat");
 
 // Redis port implementations
 builder.Services.AddScoped<IPresenceStore, RedisPresenceStore>();

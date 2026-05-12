@@ -19,14 +19,13 @@ using Kombats.Matchmaking.Infrastructure.Persistence;
 using Kombats.Matchmaking.Infrastructure.Redis;
 using Kombats.Matchmaking.Infrastructure.Repositories;
 using Kombats.Messaging.DependencyInjection;
+using Kombats.Observability;
 using Kombats.Players.Contracts;
 using Kombats.Battle.Contracts.Battle;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
 using StackExchange.Redis;
 
@@ -158,22 +157,10 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(postgresConnection, name: "postgresql")
     .AddRedis(redisConnectionString, name: "redis");
 
-// OpenTelemetry tracing
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("Kombats.Matchmaking"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSource("Npgsql");
-
-        string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-        if (!string.IsNullOrEmpty(otlpEndpoint))
-        {
-            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
-        }
-    });
+// Observability (OpenTelemetry tracing + metrics + KombatsMetrics singleton).
+// Redis tracing instrumentation discovers IConnectionMultiplexer via DI, so this call
+// must come after the IConnectionMultiplexer registration above.
+builder.Services.AddKombatsObservability(builder.Configuration, "matchmaking");
 
 // Background workers
 builder.Services.AddHostedService<MatchmakingPairingWorker>();

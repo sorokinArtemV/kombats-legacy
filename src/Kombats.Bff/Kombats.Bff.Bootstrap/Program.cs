@@ -9,11 +9,10 @@ using Kombats.Bff.Application.Composition;
 using Kombats.Bff.Application.Narration;
 using Kombats.Bff.Application.Narration.Templates;
 using Kombats.Bff.Application.Relay;
+using Kombats.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.OpenApi;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Polly;
 using Scalar.AspNetCore;
 using Serilog;
@@ -66,21 +65,8 @@ builder.Services.AddEndpoints(apiAssembly);
 // Request validation
 builder.Services.AddValidatorsFromAssembly(apiAssembly);
 
-// OpenTelemetry tracing
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("Kombats.Bff"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation();
-
-        string? otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-        if (!string.IsNullOrEmpty(otlpEndpoint))
-        {
-            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
-        }
-    });
+// Observability (OpenTelemetry tracing + metrics + KombatsMetrics singleton)
+builder.Services.AddKombatsObservability(builder.Configuration, "bff");
 
 // API Documentation — registers a Bearer security scheme and a global security
 // requirement so Scalar's "Authorize" flow works against Keycloak-issued JWTs,

@@ -124,6 +124,50 @@
         "offline_access",
         "microprofile-jwt"
       ]
+    },
+    {
+      "clientId": "kombats-loadtest",
+      "name": "Kombats Load-Test Client",
+      "description": "Confidential client used by tests/Kombats.LoadTests to mint per-bot JWTs via Resource Owner Password Credentials (ROPC). LOCAL-ONLY — see infra/keycloak/README.md for rationale and how to strip from a production deploy.",
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "loadtest-secret-do-not-use-in-prod",
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "7200"
+      },
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "kombats-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "kombats-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": []
     }
   ],
   "users": [

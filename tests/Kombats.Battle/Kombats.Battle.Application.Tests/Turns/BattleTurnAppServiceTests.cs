@@ -8,6 +8,7 @@ using Kombats.Battle.Domain.Events;
 using Kombats.Battle.Domain.Model;
 using Kombats.Battle.Domain.Results;
 using Kombats.Battle.Domain.Rules;
+using Kombats.Observability;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -47,6 +48,7 @@ public class BattleTurnAppServiceTests
         _service = new BattleTurnAppService(
             _stateStore, _engine, _notifier, _publisher, _unitOfWork,
             _actionIntake, _turnHistoryStore, _clock,
+            new KombatsMetrics("test"),
             Substitute.For<ILogger<BattleTurnAppService>>());
     }
 

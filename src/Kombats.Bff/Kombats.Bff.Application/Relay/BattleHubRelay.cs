@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Kombats.Battle.Realtime.Contracts;
 using Kombats.Bff.Application.Clients;
 using Kombats.Bff.Application.Narration;
+using Kombats.Observability;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
     private readonly ServicesOptions _servicesOptions;
     private readonly IFrontendBattleSender _sender;
     private readonly INarrationPipeline _narrationPipeline;
+    private readonly KombatsMetrics _metrics;
     private readonly ILogger<BattleHubRelay> _logger;
 
     /// <summary>Event names relayed blindly (no narration, no deserialization).</summary>
@@ -31,11 +33,13 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
         IOptions<ServicesOptions> servicesOptions,
         IFrontendBattleSender sender,
         INarrationPipeline narrationPipeline,
+        KombatsMetrics metrics,
         ILogger<BattleHubRelay> logger)
     {
         _servicesOptions = servicesOptions.Value;
         _sender = sender;
         _narrationPipeline = narrationPipeline;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -236,9 +240,11 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
             }
         };
 
-        // Store connection before connecting
+        // Store connection before connecting. The preceding DisconnectAsync removes any
+        // prior entry (and decrements the gauge), so we are always adding a fresh one here.
         var battleConnection = new BattleConnection(connection, null);
         _connections[frontendConnectionId] = battleConnection;
+        _metrics.DownstreamHubConnections.Add(1);
 
         try
         {
@@ -300,7 +306,10 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
         }
         catch
         {
-            _connections.TryRemove(frontendConnectionId, out _);
+            if (_connections.TryRemove(frontendConnectionId, out _))
+            {
+                _metrics.DownstreamHubConnections.Add(-1);
+            }
             await DisposeConnectionSafely(connection);
             throw;
         }
@@ -365,6 +374,7 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
     {
         if (_connections.TryRemove(frontendConnectionId, out var bc))
         {
+            _metrics.DownstreamHubConnections.Add(-1);
             _logger.LogInformation(
                 "Disposing downstream Battle connection for frontend {ConnectionId}",
                 frontendConnectionId);

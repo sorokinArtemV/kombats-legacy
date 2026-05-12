@@ -1,4 +1,5 @@
 using Kombats.Bff.Application.Relay;
+using Kombats.Observability;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
@@ -18,8 +19,15 @@ namespace Kombats.Bff.Api.Hubs;
 [Authorize]
 public sealed class BattleHub(
     IBattleHubRelay relay,
+    KombatsMetrics metrics,
     ILogger<BattleHub> logger) : Hub
 {
+    public override Task OnConnectedAsync()
+    {
+        metrics.ActiveSignalRConnections.Add(1);
+        return base.OnConnectedAsync();
+    }
+
     public async Task<object> JoinBattle(Guid battleId)
     {
         string accessToken = GetAccessToken();
@@ -54,6 +62,7 @@ public sealed class BattleHub(
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        metrics.ActiveSignalRConnections.Add(-1);
         logger.LogInformation(
             "Frontend {ConnectionId} disconnected. Exception: {Error}",
             Context.ConnectionId, exception?.Message);

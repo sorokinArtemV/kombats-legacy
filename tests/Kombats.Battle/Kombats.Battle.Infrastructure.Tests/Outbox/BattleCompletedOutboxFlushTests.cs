@@ -12,6 +12,7 @@ using Kombats.Battle.Infrastructure.Data;
 using Kombats.Battle.Infrastructure.Data.DbContext;
 using Kombats.Battle.Infrastructure.Messaging.Publisher;
 using Kombats.Battle.Infrastructure.Tests.Fixtures;
+using Kombats.Observability;
 using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
@@ -156,6 +157,7 @@ public class BattleCompletedOutboxFlushTests
         var service = new BattleTurnAppService(
             stateStore, engine, notifier, publisher, unitOfWork,
             actionIntake, Substitute.For<IBattleTurnHistoryStore>(), clock,
+            new KombatsMetrics("test"),
             NullLogger<BattleTurnAppService>.Instance);
 
         // Act
@@ -208,6 +210,7 @@ public class BattleCompletedOutboxFlushTests
         var service = new BattleTurnAppService(
             stateStore, engine, notifier, publisher, noOpUnitOfWork,
             actionIntake, Substitute.For<IBattleTurnHistoryStore>(), clock,
+            new KombatsMetrics("test"),
             NullLogger<BattleTurnAppService>.Instance);
 
         // Act
