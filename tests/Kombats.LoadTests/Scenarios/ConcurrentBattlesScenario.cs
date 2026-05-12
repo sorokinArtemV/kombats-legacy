@@ -1,5 +1,6 @@
 using Kombats.LoadTests.Authentication;
 using Kombats.LoadTests.Configuration;
+using Kombats.LoadTests.Reporting;
 using Kombats.LoadTests.VirtualPlayer;
 using Microsoft.Extensions.Logging;
 using NBomber.Contracts;
@@ -54,6 +55,18 @@ internal static class ConcurrentBattlesScenario
         // each new iteration grabs the next index, modulo the seeded user pool.
         int iterationCursor = -1;
 
+        // Per-iteration phase log lives next to the reports/ folder, not inside it:
+        // NBomber's WithReportFolder wipes the target directory at the end of
+        // a run (including subdirectories), which would erase our phase data.
+        var iterationsDir = Path.GetFullPath(
+            Path.Combine(opts.Reporting.OutputDirectory, "..", "iteration-logs"));
+        Directory.CreateDirectory(iterationsDir);
+        var iterationsPath = Path.Combine(
+            iterationsDir,
+            $"iterations-{DateTime.Now:yyyy-MM-dd--HH-mm-ss}.jsonl");
+        await using var recorder = new IterationRecorder(iterationsPath);
+        logger.LogInformation("[load] per-iteration phase log: {Path}", iterationsPath);
+
         var scenario = Scenario.Create("battle_session", async scenarioContext =>
         {
             var idx = Interlocked.Increment(ref iterationCursor);
@@ -65,6 +78,7 @@ internal static class ConcurrentBattlesScenario
                 loggerFactory.CreateLogger<VirtualPlayer.VirtualPlayer>());
 
             var result = await bot.RunOneBattleAsync(scenarioContext.ScenarioCancellationToken);
+            recorder.Record(result);
 
             if (result.Outcome is BattleOutcome.Won or BattleOutcome.Lost or BattleOutcome.Draw)
             {
@@ -108,6 +122,7 @@ internal static class ConcurrentBattlesScenario
         }
 
         Console.WriteLine($"[load] ok={run.Ok.Request.Count} fail={run.Fail.Request.Count}");
+        Console.WriteLine($"[load] iteration log: {iterationsPath}");
         return 0;
     }
 }
