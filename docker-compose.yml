@@ -74,6 +74,36 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # One-shot bootstrap: disables sslRequired on the *master* realm so that the
+  # admin REST API is reachable over HTTP from the host (port-forwarded source
+  # IPs are not 127.0.0.1, so Keycloak's default sslRequired=external rejects
+  # them as "HTTPS required"). The kombats realm itself sets sslRequired=none
+  # via realm.json — only master is left at the OOTB default, which this
+  # container fixes. Idempotent; safe to re-run. LOCAL DEV ONLY.
+  # See KEYCLOAK_BOOTSTRAP.md.
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: kombats-keycloak-bootstrap
+    depends_on:
+      keycloak:
+        condition: service_started
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -eu
+        echo "[keycloak-bootstrap] waiting for keycloak admin endpoint..."
+        until /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://keycloak:8080 \
+              --realm master \
+              --user admin \
+              --password admin >/dev/null 2>&1; do
+          sleep 3
+        done
+        echo "[keycloak-bootstrap] disabling sslRequired on master realm..."
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+        echo "[keycloak-bootstrap] done."
+    restart: "no"
+
   rabbitmq:
     image: rabbitmq:3.13-management
     container_name: kombats-rabbitmq

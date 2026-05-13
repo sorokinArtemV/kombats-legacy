@@ -1,0 +1,75 @@
+# Chapter 3 Phase II — second Battle replica.
+#
+# Layered on top of the base stack to bring up `battle-2` alongside the
+# existing `battle` service so the SignalR cross-replica failure mode
+# (CHAPTER_3_PLAN.md §3.1) becomes observable. Single-replica is the
+# default state — this file is opt-in.
+#
+# Usage (always merged on top of the base + observability stack):
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f observability/docker-compose.observability.yml \
+#     -f observability/docker-compose.observability.override.yml \
+#     -f docker-compose.multi-replica.yml \
+#     up -d --build
+#
+# Decisions (locked by CHAPTER_3_PLAN.md §12):
+#   Q1 — 2 replicas, not 3.
+#   Q2 — named service `battle-2` (deterministic logs), not `--scale`.
+#
+# Notes:
+#   - `battle-2` advertises the network alias `battle` on the project's
+#     default network so Docker's embedded DNS round-robins lookups of
+#     `battle` between the two containers. The base `battle` service
+#     already gets `battle` as its implicit alias from its service key,
+#     so the base file does NOT need to be edited.
+#   - No host port mapping: BFF reaches Battle via container DNS
+#     (`http://battle:8080`); duplicating the base service's host port
+#     5003 would collide. Inter-container access is sufficient.
+#   - Env is inlined verbatim from the base `battle` service plus the
+#     OTel endpoint from `docker-compose.observability.override.yml`.
+#     YAML anchors cannot span Compose files, so this file is the
+#     authoritative source for `battle-2`'s configuration. Keep it in
+#     sync with the base service if you change env there.
+#   - Base `battle` declares no healthcheck, so neither does this one
+#     (matches "same as existing"). `docker compose ps` reports both
+#     as `Up` without a health column.
+#   - This file MUST be overlaid on the base compose; it has no value
+#     standalone and references services (postgres, redis, rabbitmq,
+#     keycloak) defined only in the base.
+
+services:
+  battle-2:
+    build:
+      context: .
+      dockerfile: src/Kombats.Battle/Kombats.Battle.Bootstrap/Dockerfile
+    container_name: kombats-battle-2
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__PostgresConnection: "Host=postgres;Port=5432;Database=kombats;Username=postgres;Password=postgres;Maximum Pool Size=20;Minimum Pool Size=5;Connection Idle Lifetime=300"
+      ConnectionStrings__Redis: "redis:6379,abortConnect=false"
+      Keycloak__Authority: "http://keycloak:8080/realms/kombats"
+      Keycloak__Audience: "kombats-api"
+      Messaging__RabbitMq__Host: "rabbitmq"
+      Messaging__RabbitMq__Port: "5672"
+      Messaging__RabbitMq__Username: "guest"
+      Messaging__RabbitMq__Password: "guest"
+      Messaging__RabbitMq__VirtualHost: "/"
+      Cors__AllowedOrigins__0: "http://localhost:5173"
+      OpenTelemetry__OtlpEndpoint: "http://otel-collector:4317"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - battle
+    restart: unless-stopped
