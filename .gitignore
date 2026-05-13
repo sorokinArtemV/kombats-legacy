@@ -480,3 +480,12 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Kombats — local agent/IDE settings (per-user, not source)
+.claude/settings.local.json
+
+# Kombats — load test generated state and reports
+tests/Kombats.LoadTests/users-manifest.json
+tests/Kombats.LoadTests/iteration-logs/
+tests/Kombats.LoadTests/reports/
+tests/Kombats.LoadTests/bin/**/reports/
