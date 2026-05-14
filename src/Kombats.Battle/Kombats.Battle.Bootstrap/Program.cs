@@ -125,8 +125,10 @@ builder.Services.AddScoped<IRulesetProvider, RulesetProvider>();
 builder.Services.AddSingleton<ISeedGenerator, SeedGenerator>();
 
 // Infrastructure — SignalR
+// Backplane reuses the same Redis instance as battle state today; production deployments should split the two onto dedicated Redis nodes.
 builder.Services.AddSignalR(options => { options.EnableDetailedErrors = builder.Environment.IsDevelopment(); })
-    .AddJsonProtocol(options => { options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
+    .AddJsonProtocol(options => { options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()); })
+    .AddStackExchangeRedis(redisConnectionString);
 
 // Messaging (Kombats.Messaging with transactional outbox — AD-01)
 builder.Services.AddMessaging<BattleDbContext>(

@@ -6,6 +6,7 @@ using Kombats.Battle.Realtime.Contracts;
 using Kombats.Bff.Application.Clients;
 using Kombats.Bff.Application.Narration;
 using Kombats.Observability;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,6 +63,19 @@ public sealed class BattleHubRelay : IBattleHubRelay, IAsyncDisposable
             .WithUrl(battleHubUrl, options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
+
+                // Negotiate→handshake state is not replicated by the SignalR Redis backplane:
+                // Microsoft.AspNetCore.SignalR.StackExchangeRedis replicates HubLifetimeManager
+                // only, not HttpConnectionManager's per-connection token map. With Battle on
+                // multiple replicas and DNS rotation, the negotiate POST and the handshake GET
+                // can land on different replicas — the GET then 404s. Skipping negotiation and
+                // forcing WebSockets pins both into a single WebSocket upgrade against whichever
+                // replica DNS picked, so no cross-replica token lookup is required. The JWT
+                // travels on the upgrade via access_token query string (BattleHub reads it from
+                // header or query string — see SIGNALR_SURFACE_MAP.md §J.3).
+                // Ref: https://github.com/dotnet/aspnetcore/issues/50171
+                options.SkipNegotiation = true;
+                options.Transports = HttpTransportType.WebSockets;
 
                 if (!string.IsNullOrEmpty(traceparent))
                 {
