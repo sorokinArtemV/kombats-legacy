@@ -38,6 +38,13 @@ internal sealed class MatchmakingWorkerOptions
     /// Default: 100ms.
     /// </summary>
     public int TickDelayMs { get; set; } = 100;
+
+    /// <summary>
+    /// Maximum number of pairs the handler will create in a single tick before yielding the lease.
+    /// Bounds the inner pairing loop alongside the soft wall-time deadline.
+    /// Default: 64.
+    /// </summary>
+    public int MaxPairsPerTick { get; set; } = 64;
 }
 
 

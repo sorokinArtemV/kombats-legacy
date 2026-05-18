@@ -45,89 +45,113 @@ internal sealed class ExecuteMatchmakingTickHandler
     {
         using var tickActivity = _activitySource.StartActivity("matchmaking.pair.tick");
 
-        // Atomically pop a pair from Redis queue
-        (Guid, Guid)? pair;
-        using (var a = _activitySource.StartActivity("matchmaking.pair.try-pop"))
+        var maxPairs = cmd.MaxPairsPerTick > 0 ? cmd.MaxPairsPerTick : 1;
+        var stopwatch = Stopwatch.StartNew();
+        var pairsCreated = 0;
+
+        while (true)
         {
-            pair = await _queueStore.TryPopPairAsync(cmd.Variant, ct);
+            // Graceful exit: if the lease has been lost or the host is shutting down,
+            // stop before issuing another pop. Mid-await cancellation still surfaces as
+            // OperationCanceledException through the threaded token and is handled by
+            // MatchmakingLeaseService.
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            if (pairsCreated >= maxPairs)
+            {
+                break;
+            }
+
+            if (stopwatch.ElapsedMilliseconds >= MatchmakingTickBudget.SoftDeadlineMs)
+            {
+                break;
+            }
+
+            (Guid, Guid)? pair;
+            using (var a = _activitySource.StartActivity("matchmaking.pair.try-pop"))
+            {
+                pair = await _queueStore.TryPopPairAsync(cmd.Variant, ct);
+            }
+
+            // null = queue empty OR single player left (the Lua script requeues the lone
+            // player to the tail itself — recon Q1). Either way, this tick is done.
+            if (pair == null)
+            {
+                break;
+            }
+
+            var (playerAId, playerBId) = pair.Value;
+
+            PlayerCombatProfile? profileA;
+            using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-1"))
+            {
+                profileA = await _profileRepository.GetByIdentityIdAsync(playerAId, ct);
+            }
+            PlayerCombatProfile? profileB;
+            using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-2"))
+            {
+                profileB = await _profileRepository.GetByIdentityIdAsync(playerBId, ct);
+            }
+
+            if (profileA == null || profileB == null)
+            {
+                _logger.LogError(
+                    "Combat profile missing for matched players. PlayerA={PlayerAId} (found={AFound}), PlayerB={PlayerBId} (found={BFound}). Re-queuing both players.",
+                    playerAId, profileA != null, playerBId, profileB != null);
+
+                // Restore both players to queue head so they are not silently lost (EI-014).
+                await _queueStore.TryRequeueAsync(cmd.Variant, playerAId, ct);
+                await _queueStore.TryRequeueAsync(cmd.Variant, playerBId, ct);
+
+                continue;
+            }
+
+            var matchId = Guid.NewGuid();
+            var battleId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+
+            var match = Match.Create(matchId, battleId, playerAId, playerBId, cmd.Variant, now);
+            match.MarkBattleCreateRequested(now);
+
+            _matchRepository.Add(match);
+
+            var request = new CreateBattleRequest(
+                battleId,
+                matchId,
+                now,
+                ToSnapshot(profileA),
+                ToSnapshot(profileB));
+
+            using (var a = _activitySource.StartActivity("matchmaking.pair.publish-create-battle"))
+            {
+                await _battlePublisher.PublishAsync(request, ct);
+            }
+
+            using (var a = _activitySource.StartActivity("matchmaking.pair.save-changes"))
+            {
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+
+            using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-1"))
+            {
+                await _statusStore.SetMatchedAsync(playerAId, matchId, battleId, cmd.Variant, ct);
+            }
+            using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-2"))
+            {
+                await _statusStore.SetMatchedAsync(playerBId, matchId, battleId, cmd.Variant, ct);
+            }
+
+            pairsCreated++;
+
+            _logger.LogInformation(
+                "Match created: MatchId={MatchId}, BattleId={BattleId}, PlayerA={PlayerAId}, PlayerB={PlayerBId}",
+                matchId, battleId, playerAId, playerBId);
         }
-        if (pair == null)
-        {
-            return new MatchmakingTickResult(false);
-        }
 
-        var (playerAId, playerBId) = pair.Value;
-
-        // Fetch combat profiles from local projection
-        PlayerCombatProfile? profileA;
-        using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-1"))
-        {
-            profileA = await _profileRepository.GetByIdentityIdAsync(playerAId, ct);
-        }
-        PlayerCombatProfile? profileB;
-        using (var a = _activitySource.StartActivity("matchmaking.pair.profile-lookup-2"))
-        {
-            profileB = await _profileRepository.GetByIdentityIdAsync(playerBId, ct);
-        }
-
-        if (profileA == null || profileB == null)
-        {
-            _logger.LogError(
-                "Combat profile missing for matched players. PlayerA={PlayerAId} (found={AFound}), PlayerB={PlayerBId} (found={BFound}). Re-queuing both players.",
-                playerAId, profileA != null, playerBId, profileB != null);
-
-            // Restore both players to queue head so they are not silently lost (EI-014)
-            await _queueStore.TryRequeueAsync(cmd.Variant, playerAId, ct);
-            await _queueStore.TryRequeueAsync(cmd.Variant, playerBId, ct);
-
-            return new MatchmakingTickResult(false);
-        }
-
-        var matchId = Guid.NewGuid();
-        var battleId = Guid.NewGuid();
-        var now = DateTimeOffset.UtcNow;
-
-        // Create domain match and advance to BattleCreateRequested
-        var match = Match.Create(matchId, battleId, playerAId, playerBId, cmd.Variant, now);
-        match.MarkBattleCreateRequested(now);
-
-        // Persist match
-        _matchRepository.Add(match);
-
-        // Publish CreateBattle via MassTransit outbox (atomic with SaveChanges)
-        var request = new CreateBattleRequest(
-            battleId,
-            matchId,
-            now,
-            ToSnapshot(profileA),
-            ToSnapshot(profileB));
-
-        using (var a = _activitySource.StartActivity("matchmaking.pair.publish-create-battle"))
-        {
-            await _battlePublisher.PublishAsync(request, ct);
-        }
-
-        // Atomic save: match insert + outbox message
-        using (var a = _activitySource.StartActivity("matchmaking.pair.save-changes"))
-        {
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-
-        // Update Redis status for both players to Matched
-        using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-1"))
-        {
-            await _statusStore.SetMatchedAsync(playerAId, matchId, battleId, cmd.Variant, ct);
-        }
-        using (var a = _activitySource.StartActivity("matchmaking.pair.set-matched-2"))
-        {
-            await _statusStore.SetMatchedAsync(playerBId, matchId, battleId, cmd.Variant, ct);
-        }
-
-        _logger.LogInformation(
-            "Match created: MatchId={MatchId}, BattleId={BattleId}, PlayerA={PlayerAId}, PlayerB={PlayerBId}",
-            matchId, battleId, playerAId, playerBId);
-
-        return new MatchmakingTickResult(true, matchId, battleId);
+        return new MatchmakingTickResult(pairsCreated);
     }
 
     private static ParticipantSnapshot ToSnapshot(PlayerCombatProfile p) =>

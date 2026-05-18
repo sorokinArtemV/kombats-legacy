@@ -35,33 +35,39 @@ internal sealed class MatchmakingPairingWorker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation(
-            "MatchmakingPairingWorker started. InstanceId={InstanceId}, TickDelay={TickDelayMs}ms",
-            _instanceIdService.InstanceId, _options.TickDelayMs);
+            "MatchmakingPairingWorker started. InstanceId={InstanceId}, TickDelay={TickDelayMs}ms, MaxPairsPerTick={MaxPairsPerTick}",
+            _instanceIdService.InstanceId, _options.TickDelayMs, _options.MaxPairsPerTick);
 
         const string variant = "default";
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var pairsCreated = 0;
+
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var handler = scope.ServiceProvider
                     .GetRequiredService<ICommandHandler<ExecuteMatchmakingTickCommand, MatchmakingTickResult>>();
 
+                var maxPairsPerTick = _options.MaxPairsPerTick;
+
                 var result = await _leaseService.TryExecuteUnderLeaseAsync(
                     variant,
                     async ct =>
                     {
-                        var r = await handler.HandleAsync(new ExecuteMatchmakingTickCommand(variant), ct);
-                        return r.IsSuccess ? r.Value : new MatchmakingTickResult(false);
+                        var r = await handler.HandleAsync(
+                            new ExecuteMatchmakingTickCommand(variant, maxPairsPerTick), ct);
+                        return r.IsSuccess ? r.Value : new MatchmakingTickResult(0);
                     },
                     stoppingToken);
 
-                if (result is { MatchCreated: true })
+                pairsCreated = result?.PairsCreated ?? 0;
+
+                if (pairsCreated > 0)
                 {
                     _logger.LogInformation(
-                        "Match created: MatchId={MatchId}, BattleId={BattleId}",
-                        result.MatchId, result.BattleId);
+                        "Matchmaking tick paired {PairsCreated} matches", pairsCreated);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -69,7 +75,12 @@ internal sealed class MatchmakingPairingWorker : BackgroundService
                 _logger.LogError(ex, "Error in MatchmakingPairingWorker tick");
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(_options.TickDelayMs), stoppingToken);
+            // Idle backoff: only sleep when the tick was idle. If we drained at least one
+            // pair this tick, immediately try again — the queue may still be hot.
+            if (pairsCreated == 0)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(_options.TickDelayMs), stoppingToken);
+            }
         }
     }
 }

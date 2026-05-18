@@ -1,3 +1,4 @@
+using Kombats.Matchmaking.Application.UseCases.ExecuteMatchmakingTick;
 using Microsoft.Extensions.Logging;
 
 namespace Kombats.Matchmaking.Infrastructure.Redis;
@@ -12,7 +13,8 @@ internal sealed class MatchmakingLeaseService
     private readonly InstanceIdService _instanceIdService;
     private readonly ILogger<MatchmakingLeaseService> _logger;
 
-    private const int LockTtlMs = 5000; // Lock expires after 5 seconds (must be renewed)
+    // Sourced from MatchmakingTickBudget so the handler's soft deadline tracks any change.
+    private const int LockTtlMs = MatchmakingTickBudget.LeaseLockTtlMs; // Lock expires after 5 seconds (must be renewed)
     private static readonly int RenewalIntervalMs = LockTtlMs / 3; // Renew every 1/3 of TTL
 
     public MatchmakingLeaseService(
