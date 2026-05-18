@@ -35,6 +35,22 @@ public static class KombatsObservabilityExtensions
         services.AddSingleton(new KombatsMetrics(serviceName));
 
         string? otlpEndpoint = config[OtlpEndpointKey];
+
+        // Defensive logging: empty endpoint is a supported case (deploys without a collector),
+        // but historically this silent skip caused observability to be broken for 3 chapters
+        // before being noticed (RUN_4_SETUP_LOG.md §11). The WARN ensures the next misconfiguration
+        // surfaces at the first service startup, not after weeks of empty Grafana dashboards.
+        // ILogger is not available here (pre-DI-build), so Console.Error is used directly —
+        // standard .NET pattern for startup-time diagnostics.
+        if (string.IsNullOrEmpty(otlpEndpoint))
+        {
+            Console.Error.WriteLine(
+                $"[WARN] Kombats.Observability ({serviceName}): OpenTelemetry:OtlpEndpoint is empty or missing. " +
+                $"OTLP exporters will NOT be attached — traces and metrics will be discarded. " +
+                $"If this is intentional (deploys without a collector), ignore. " +
+                $"If unintentional, ensure observability override file is in the compose chain.");
+        }
+
         int metricExportIntervalMs = config.GetValue<int?>(MetricExportIntervalKey)
                                      ?? DefaultMetricExportIntervalMs;
         string deploymentEnvironment =

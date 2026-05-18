@@ -46,6 +46,15 @@ services:
     container_name: kombats-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+      # Bound in-memory trace retention. Phase C measured Jaeger climbing
+      # to ~2.1 GB over a 120 s 25-simul run (PHASE_C_RESULTS.md "docker
+      # stats baseline"); a 30 min Phase D scan would OOM the host.
+      # Back-of-envelope: 2.1 GB / ~2000 iter × ~5 traces/iter ≈ 200 KB
+      # per trace; 3000 keeps the steady-state working set in the
+      # 600-800 MB band while still retaining enough history (~3 min at
+      # 25 simul) to debug a stage transition. Verified empirically in
+      # PHASE_D_PREFLIGHT_RESULTS.md.
+      MEMORY_MAX_TRACES: "3000"
     ports:
       - "16686:16686"  # Jaeger UI
       # Internal OTLP receiver stays on the default 4317/4318 inside the

@@ -14,7 +14,7 @@ namespace Kombats.Battle.Infrastructure.State.Redis;
 /// <summary>
 /// Infrastructure implementation of IBattleStateStore using Redis.
 /// Maps between Infrastructure BattleState and Domain/Application models.
-/// 
+///
 /// Production scheduling: TurnDeadlineWorker uses ClaimDueBattlesAsync in a tick loop with adaptive backoff.
 /// Do not use legacy methods (GetNextDeadlineUtcAsync, GetDueBattlesAsync) for production code.
 /// </summary>
@@ -24,7 +24,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
     private readonly ILogger<RedisBattleStateStore> _logger;
     private readonly BattleRedisOptions _options;
     private readonly IClock _clock;
-    
+
     private const string StateKeyPrefix = "battle:state:";
     private const string ActionKeyPrefix = "battle:action:";
     private const string ActiveBattlesSetKey = "battle:active";
@@ -55,7 +55,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
         _options = options.Value;
         _clock = clock;
     }
-    
+
     /// <summary>
     /// Helper method for unix milliseconds conversion (ZSET scores and state JSON use unixMs for consistency)
     /// </summary>
@@ -121,7 +121,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
                 _logger.LogError("Deserialized battle state is null for BattleId: {BattleId}. This indicates a serialization mismatch.", battleId);
                 throw new InvalidOperationException($"Deserialized battle state is null for BattleId: {battleId}");
             }
-            
+
             return StoredStateMapper.ToSnapshot(state);
         }
         catch (JsonException ex)
@@ -196,9 +196,9 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
             RedisScripts.MarkTurnResolvedAndOpenNextScript,
             [key, DeadlinesZSetKey],
             [
-                currentTurnIndex, 
-                nextTurnIndex, 
-                deadlineUnixMs, 
+                currentTurnIndex,
+                nextTurnIndex,
+                deadlineUnixMs,
                 noActionStreak,
                 playerAHp,
                 playerBHp,
@@ -265,13 +265,24 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
                 battleId);
         }
 
+        // State TTL applied as a separate call after Lua SET, not atomically inside the script.
+        // Rationale: Ended battles are terminal — no reader depends on the TTL being present
+        // the instant SET completes. The brief non-atomic window (< 1 RTT) is acceptable
+        // because TTL here is housekeeping (Redis-side cleanup), not consistency.
+        // Atomic alternative would require extending EndBattleAndMarkResolvedScript with a
+        // sentinel for nullable TTL — deferred as unnecessary complexity.
+        if (commitResult == EndBattleCommitResult.EndedNow && _options.StateTtlAfterEnd.HasValue)
+        {
+            await db.KeyExpireAsync(key, _options.StateTtlAfterEnd.Value);
+        }
+
         return commitResult;
     }
-    
+
     public async Task<IReadOnlyList<ClaimedBattleDue>> ClaimDueBattlesAsync(
-        DateTimeOffset nowUtc, 
-        int limit, 
-        TimeSpan leaseTtl, 
+        DateTimeOffset nowUtc,
+        int limit,
+        TimeSpan leaseTtl,
         CancellationToken cancellationToken = default)
     {
         var db = _redis.GetDatabase();
@@ -287,7 +298,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
                 new RedisValue[] { nowUnixMs, limit, leaseWindowMs, SmallDelayMs, StateKeyPrefix });
 
             var claimed = new List<ClaimedBattleDue>();
-            
+
             if (!result.IsNull)
             {
                 var results = (RedisValue[]?)result;
@@ -300,8 +311,8 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
                         {
                             var battleIdStr = results[i].ToString();
                             var turnIndexStr = results[i + 1].ToString();
-                        
-                            if (Guid.TryParse(battleIdStr, out var battleId) && 
+
+                            if (Guid.TryParse(battleIdStr, out var battleId) &&
                                 int.TryParse(turnIndexStr, out var turnIndex))
                             {
                                 claimed.Add(new ClaimedBattleDue
@@ -472,7 +483,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
             var command = JsonSerializer.Deserialize<PlayerActionCommand>(
                 storedValue,
                 PlayerActionCommandJsonOptions);
-            
+
             if (command != null)
             {
                 // Validate invariant
@@ -512,8 +523,8 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
         {
             using var doc = JsonDocument.Parse(storedValue);
             var root = doc.RootElement;
-            
-            // If it looks like a legacy action payload (has attackZone property), 
+
+            // If it looks like a legacy action payload (has attackZone property),
             // treat as corrupted and return NoAction
             if (root.TryGetProperty("attackZone", out _))
             {
@@ -521,7 +532,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
                     "Legacy action format detected for BattleId: {BattleId}, TurnIndex: {TurnIndex}, PlayerId: {PlayerId}. " +
                     "Stored value appears to be raw client payload. Converting to NoAction with CorruptedStoredAction reason.",
                     battleId, turnIndex, playerId);
-                
+
                 // Return NoAction - we can't safely convert without battle state for full validation
                 // This preserves gameplay: missing/corrupted actions become NoAction
                 return new PlayerActionCommand
@@ -547,7 +558,7 @@ internal sealed class RedisBattleStateStore : IBattleStateStore
             "Failed to deserialize stored action (corrupted or legacy format) for BattleId: {BattleId}, TurnIndex: {TurnIndex}, PlayerId: {PlayerId}. " +
             "Stored value: {StoredValue}. Converting to NoAction.",
             battleId, turnIndex, playerId, storedValue.Length > 100 ? storedValue.Substring(0, 100) + "..." : storedValue);
-        
+
         // Return NoAction to preserve gameplay semantics
         return new PlayerActionCommand
         {

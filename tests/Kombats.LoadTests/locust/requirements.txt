@@ -1,0 +1,6 @@
+locust==2.44.0
+gevent==25.9.1
+signalrcore==1.0.2
+websocket-client==1.9.0
+httpx==0.28.1
+PyJWT==2.12.1
