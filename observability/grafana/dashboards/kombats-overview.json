@@ -1,0 +1,408 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Kombats local-dev overview. Hot path, infra, runtime. Each panel cites the source metric in its description.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Hot Path",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "id": 100,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Turn resolution latency (ms)",
+      "description": "Histogram turn_resolution_duration (unit ms; exported as turn_resolution_duration_milliseconds_*) emitted by Kombats.battle from BattleTurnAppService.ResolveTurnAsync.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+      "id": 1,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(turn_resolution_duration_milliseconds_bucket[1m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(turn_resolution_duration_milliseconds_bucket[1m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(turn_resolution_duration_milliseconds_bucket[1m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active battles",
+      "description": "UpDownCounter active_battles on Kombats.battle. +1 when Turn 1 opens, -1 on EndedNow.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 12, "y": 1, "w": 6, "h": 8 },
+      "id": 2,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 30 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "active_battles",
+          "legendFormat": "active_battles",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active SignalR connections (Battle vs BFF)",
+      "description": "UpDownCounter active_signalr_connections, split by service. Battle = Battle.Infrastructure.BattleHub, bff = Bff.Api.BattleHub.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 18, "y": 1, "w": 6, "h": 8 },
+      "id": 3,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 20, "stacking": { "mode": "none" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (active_signalr_connections)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (service) (downstream_hub_connections)",
+          "legendFormat": "{{service}} downstream",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP server request duration p95 (s)",
+      "description": "Stable OTel semantic conv: http.server.request.duration. Split by service.name.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 9, "w": 12, "h": 8 },
+      "id": 4,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_server_request_duration_seconds_bucket[1m])))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP request rate (req/s)",
+      "description": "Counter http.server.request.duration_count (Prom: _count) rate per second, split by service.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 12, "y": 9, "w": 12, "h": 8 },
+      "id": 5,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(http_server_request_duration_seconds_count[1m]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active SignalR connections — per replica",
+      "description": "Same metric as the adjacent aggregated panel, but no sum-by-service. Each series is one Kombats service instance (service_name + service_instance_id). On a single-replica stack expect 1 line per service that hosts SignalR (battle, bff); when Chapter 3 Phase II brings up 2 Battle replicas, expect 2 battle lines with distinct service_instance_id.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 8 },
+      "id": 13,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 20, "stacking": { "mode": "none" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "active_signalr_connections",
+          "legendFormat": "{{service_name}}/{{service_instance_id}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Infra",
+      "gridPos": { "x": 0, "y": 25, "w": 24, "h": 1 },
+      "id": 101,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres command duration p95 (s)",
+      "description": "Npgsql.OpenTelemetry emits db.client.operation.duration. Filtered to Postgres (db.system=postgresql).",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+      "id": 6,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(db_client_operation_duration_seconds_bucket{db_system=\"postgresql\"}[1m])))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Redis trace rate (spans/s) — placeholder",
+      "description": "OpenTelemetry.Instrumentation.StackExchangeRedis is a tracing-only instrumentation; there is no first-party Redis metric. Use Jaeger search 'kombats / db.system=redis' to inspect per-command latency. This panel falls back to db.client.operation.duration counts in case future SDKs emit it.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+      "id": 7,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(db_client_operation_duration_seconds_count{db_system=\"redis\"}[1m]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MassTransit publish/consume rate",
+      "description": "MassTransit 8.x Meter messaging.masstransit.* — split by operation (publish/consume).",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 7 },
+      "id": 8,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(messaging_masstransit_publish_count[1m]))",
+          "legendFormat": "{{service}} publish",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (service) (rate(messaging_masstransit_consume_count[1m]))",
+          "legendFormat": "{{service}} consume",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Runtime",
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 1 },
+      "id": 102,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU utilization per service",
+      "description": "Computed: rate(process.cpu.time_total) / process.cpu.count. The Process instrumentation does not emit process.cpu.utilization directly as of OpenTelemetry.Instrumentation.Process 1.10.0-beta.1.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 42, "w": 12, "h": 7 },
+      "id": 9,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(process_cpu_time_seconds_total[1m])) / sum by (service) (process_cpu_count)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Working-set memory per service",
+      "description": "process.memory.usage (bytes) from OpenTelemetry.Instrumentation.Process.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 12, "y": 42, "w": 12, "h": 7 },
+      "id": 10,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (process_memory_usage_bytes)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GC gen2 collections rate",
+      "description": "dotnet.gc.collections (OpenTelemetry.Instrumentation.Runtime), filter gc_heap_generation=gen2.",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 0, "y": 49, "w": 12, "h": 7 },
+      "id": 11,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(dotnet_gc_collections_total{gc_heap_generation=\"gen2\"}[1m]))",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "ThreadPool queue length",
+      "description": "dotnet.thread_pool.queue.length (OpenTelemetry.Instrumentation.Runtime).",
+      "datasource": { "type": "prometheus", "uid": "kombats-prometheus" },
+      "gridPos": { "x": 12, "y": 49, "w": 12, "h": 7 },
+      "id": 12,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (service) (dotnet_thread_pool_queue_length_total)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "preload": false,
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["kombats", "overview"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Kombats overview",
+  "uid": "kombats-overview",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,0 +1,24 @@
+/* Kombats font registration.
+ * Inter + Cinzel + Noto Sans JP are loaded via @import in index.css. Display
+ * font (Cinzel) is the source of truth for ceremonial/heading text, exposed
+ * through the --font-display token. Components can opt out of display on a
+ * specific heading by applying a different Tailwind font-* utility. */
+
+:root {
+  font-family: var(--font-primary);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  letter-spacing: var(--heading-tracking);
+}
+
+button {
+  font-family: var(--font-primary);
+  letter-spacing: var(--button-tracking);
+}

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Kombats.Common\Kombats.Messaging\Kombats.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Players\Kombats.Players.Contracts\Kombats.Players.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Contracts\Kombats.Matchmaking.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Battle\Kombats.Battle.Contracts\Kombats.Battle.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Players\Kombats.Players.Infrastructure\Kombats.Players.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Infrastructure\Kombats.Matchmaking.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Battle\Kombats.Battle.Infrastructure\Kombats.Battle.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Players\Kombats.Players.Application\Kombats.Players.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Application\Kombats.Matchmaking.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Battle\Kombats.Battle.Application\Kombats.Battle.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Players\Kombats.Players.Domain\Kombats.Players.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Matchmaking\Kombats.Matchmaking.Domain\Kombats.Matchmaking.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Kombats.Battle\Kombats.Battle.Domain\Kombats.Battle.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

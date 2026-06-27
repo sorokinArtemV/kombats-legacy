@@ -1,0 +1,153 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.43.8.12551",
+      "templateHash": "13178686785125530843"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "defaultValue": "migrator",
+      "metadata": {
+        "description": "Job name. Defaults to \"migrator\"."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region."
+      }
+    },
+    "environmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Container Apps Environment."
+      }
+    },
+    "image": {
+      "type": "string",
+      "metadata": {
+        "description": "Migrator image reference, e.g. ghcr.io/sorokinartemv/kombats-migrator:42"
+      }
+    },
+    "ghcrUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "GHCR username."
+      }
+    },
+    "ghcrToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "GHCR Personal Access Token."
+      }
+    },
+    "postgresHost": {
+      "type": "string",
+      "metadata": {
+        "description": "Internal hostname of Postgres, e.g. postgres.internal.<env-domain>. No scheme, no port."
+      }
+    },
+    "postgresPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Postgres superuser password (used to create the keycloak database and user)."
+      }
+    },
+    "keycloakDbPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for the keycloak DB user (created by the migrator and used by the Keycloak app)."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/jobs",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "environmentId": "[parameters('environmentId')]",
+        "configuration": {
+          "triggerType": "Manual",
+          "replicaTimeout": 600,
+          "replicaRetryLimit": 1,
+          "manualTriggerConfig": {
+            "parallelism": 1,
+            "replicaCompletionCount": 1
+          },
+          "registries": [
+            {
+              "server": "ghcr.io",
+              "username": "[parameters('ghcrUsername')]",
+              "passwordSecretRef": "ghcr-token"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "ghcr-token",
+              "value": "[parameters('ghcrToken')]"
+            },
+            {
+              "name": "postgres-password",
+              "value": "[parameters('postgresPassword')]"
+            },
+            {
+              "name": "keycloak-db-password",
+              "value": "[parameters('keycloakDbPassword')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "migrator",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              },
+              "env": [
+                {
+                  "name": "POSTGRES_HOST",
+                  "value": "[parameters('postgresHost')]"
+                },
+                {
+                  "name": "POSTGRES_PORT",
+                  "value": "5432"
+                },
+                {
+                  "name": "POSTGRES_DB",
+                  "value": "kombats"
+                },
+                {
+                  "name": "POSTGRES_USER",
+                  "value": "kombats"
+                },
+                {
+                  "name": "POSTGRES_PASSWORD",
+                  "secretRef": "postgres-password"
+                },
+                {
+                  "name": "KEYCLOAK_DB_PASSWORD",
+                  "secretRef": "keycloak-db-password"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "name": {
+      "type": "string",
+      "value": "[parameters('name')]"
+    }
+  }
+}

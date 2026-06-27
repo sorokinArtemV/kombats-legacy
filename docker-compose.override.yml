@@ -1,0 +1,4 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by `docker compose up` alongside docker-compose.yml.
+# Add development-time service definitions and configuration overrides here.
+services: {}

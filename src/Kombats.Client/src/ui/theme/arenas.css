@@ -1,0 +1,131 @@
+/* ============================================================
+   Arena themes — per-arena palette overrides
+   Imported from index.css after tokens.css.
+   Each [data-arena="..."] block redefines palette + matching
+   --rgb-* tokens in lockstep. Both layers are required because
+   --rgb-* is independent of --palette-* (literal triples, not
+   derivations).
+   ============================================================ */
+
+[data-arena="blood-moon"] {
+  /* Accent — crimson red replaces the design-system gold. */
+  --palette-gold-accent: #d63b3b;
+  --rgb-gold-accent: 214, 59, 59;
+
+  /* Crimson scale — shifted to blood-orange for contrast against
+     the red atmosphere. */
+  --palette-crimson: #ff6644;
+  --palette-crimson-dark: #d65540;
+  --palette-crimson-light: #ff8866;
+  --rgb-crimson: 255, 102, 68;
+
+  /* Jade — unchanged (ally HP stays green for convention). */
+
+  /* Ink-navy — bloody blackness for glass surfaces. */
+  --palette-ink-navy: #1a0808;
+  --rgb-ink-navy: 26, 8, 8;
+
+  /* HP crimson stops — blood-orange for contrast. */
+  --palette-hp-crimson-1: #ff8866;
+  --palette-hp-crimson-2: #d65540;
+  --palette-hp-crimson-3: #aa3828;
+
+  /* Gold-victory — warmer, brighter for rays on red atmosphere. */
+  --palette-gold-victory: #ffaa44;
+  --rgb-gold-victory: 255, 170, 68;
+
+  /* SVG feFlood overrides — attack reads warmer-red here. */
+  --palette-attack-flood: #dc503c;
+  --rgb-attack-flood: 220, 80, 60;
+  --palette-block-flood: #5a8a7a;
+  --rgb-block-flood: 90, 138, 122;
+
+  /* Arena background. */
+  --arena-bg-image: url('../assets/backgrounds/blood_moon.png');
+  --arena-overlay: radial-gradient(
+    ellipse at center,
+    rgba(26, 0, 0, 0) 0%,
+    rgba(26, 0, 0, 0.35) 100%
+  );
+}
+
+[data-arena="desert"] {
+  /* Accent — warm orange-gold. */
+  --palette-gold-accent: #e89a4a;
+  --rgb-gold-accent: 232, 154, 74;
+
+  /* Crimson — unchanged (default reads on warm bg). */
+
+  /* Jade — slightly warmer to avoid cold-spotting. */
+  --palette-jade: #6a9a7a;
+  --palette-jade-dark: #5a8a6a;
+  --palette-jade-light: #7aaa8a;
+  --rgb-jade: 106, 154, 122;
+
+  /* Ink-navy — warm brown. */
+  --palette-ink-navy: #2a1a0a;
+  --rgb-ink-navy: 42, 26, 10;
+
+  /* HP jade — warmer to match arena. */
+  --palette-hp-jade-1: #74a585;
+  --palette-hp-jade-2: #6a9a7a;
+  --palette-hp-jade-3: #5a8a6a;
+
+  /* Gold-victory — saturated sunset. */
+  --palette-gold-victory: #ffc870;
+  --rgb-gold-victory: 255, 200, 112;
+
+  /* SVG feFlood overrides — defaults. */
+  --palette-attack-flood: #c03744;
+  --rgb-attack-flood: 192, 55, 68;
+  --palette-block-flood: #5a8a7a;
+  --rgb-block-flood: 90, 138, 122;
+
+  /* Arena background. */
+  --arena-bg-image: url('../assets/backgrounds/desert.png');
+  --arena-overlay: radial-gradient(
+    ellipse at center,
+    rgba(212, 165, 116, 0) 0%,
+    rgba(212, 165, 116, 0.15) 100%
+  );
+}
+
+[data-arena="bamboo"] {
+  /* Accent — jade green. */
+  --palette-gold-accent: #6ba368;
+  --rgb-gold-accent: 107, 163, 104;
+
+  /* Crimson — unchanged (red on green is complementary, reads
+     well). */
+
+  /* Jade — slightly brighter so accent and HP don't merge into
+     the same hue. */
+  --palette-jade: #7ab088;
+  --palette-jade-dark: #6aa078;
+  --palette-jade-light: #8ac098;
+  --rgb-jade: 122, 176, 136;
+
+  /* Ink-navy — dark green. */
+  --palette-ink-navy: #0d1a14;
+  --rgb-ink-navy: 13, 26, 20;
+
+  /* HP — unchanged (default stops read on green bg). */
+
+  /* Gold-victory — slightly green-tinted so victory rays fit. */
+  --palette-gold-victory: #d4d870;
+  --rgb-gold-victory: 212, 216, 112;
+
+  /* SVG feFlood overrides — defaults. */
+  --palette-attack-flood: #c03744;
+  --rgb-attack-flood: 192, 55, 68;
+  --palette-block-flood: #5a8a7a;
+  --rgb-block-flood: 90, 138, 122;
+
+  /* Arena background. */
+  --arena-bg-image: url('../assets/backgrounds/bamboo.png');
+  --arena-overlay: radial-gradient(
+    ellipse at center,
+    rgba(26, 42, 34, 0) 0%,
+    rgba(26, 42, 34, 0.25) 100%
+  );
+}

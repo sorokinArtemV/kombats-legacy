@@ -1,0 +1,56 @@
+# pipelines/build-backend.yml
+# CI pipeline: build 5 backend Docker images and push to GHCR.
+# Trigger: every push to main.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/**
+      - pipelines/build-backend.yml
+
+parameters:
+  - name: services
+    type: object
+    default:
+      - name: bff
+        dockerfile: src/Kombats.Bff/Kombats.Bff.Bootstrap/Dockerfile
+      - name: battle
+        dockerfile: src/Kombats.Battle/Kombats.Battle.Bootstrap/Dockerfile
+      - name: players
+        dockerfile: src/Kombats.Players/Kombats.Players.Bootstrap/Dockerfile
+      - name: matchmaking
+        dockerfile: src/Kombats.Matchmaking/Kombats.Matchmaking.Bootstrap/Dockerfile
+      - name: chat
+        dockerfile: src/Kombats.Chat/Kombats.Chat.Bootstrap/Dockerfile
+
+variables:
+  - group: ghcr-credentials
+  - name: IMAGE_PREFIX
+    value: ghcr.io/karanthir8/kombats
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+
+  - script: |
+      echo "$(GHCR_TOKEN)" | docker login ghcr.io -u "$(GHCR_USERNAME)" --password-stdin
+    displayName: 'Login to GHCR'
+
+  - ${{ each svc in parameters.services }}:
+      - script: |
+          docker build \
+            -f ${{ svc.dockerfile }} \
+            -t $(IMAGE_PREFIX)-${{ svc.name }}:$(Build.BuildId) \
+            -t $(IMAGE_PREFIX)-${{ svc.name }}:latest \
+            .
+        displayName: 'Build ${{ svc.name }}'
+
+      - script: |
+          docker push $(IMAGE_PREFIX)-${{ svc.name }}:$(Build.BuildId)
+          docker push $(IMAGE_PREFIX)-${{ svc.name }}:latest
+        displayName: 'Push ${{ svc.name }}'

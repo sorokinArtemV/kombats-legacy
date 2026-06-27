@@ -1,0 +1,18 @@
+using System.Security.Cryptography;
+using Kombats.Battle.Application.Ports;
+
+namespace Kombats.Battle.Infrastructure.Rules;
+
+/// <summary>
+/// Infrastructure implementation of ISeedGenerator.
+/// Uses cryptographically safe random number generation.
+/// </summary>
+internal sealed class SeedGenerator : ISeedGenerator
+{
+    public int GenerateSeed()
+    {
+        var bytes = new byte[4];
+        RandomNumberGenerator.Fill(bytes);
+        return BitConverter.ToInt32(bytes);
+    }
+}

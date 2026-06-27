@@ -1,0 +1,84 @@
+using System.Text.Json.Serialization;
+using Kombats.Battle.Domain.Model;
+using Kombats.Battle.Domain.Rules;
+
+namespace Kombats.Battle.Infrastructure.State.Redis;
+
+/// <summary>
+/// Infrastructure-specific battle state (Redis JSON serialization).
+/// This is the concrete type stored in Redis.
+/// Uses domain models for Ruleset and BattlePhase.
+/// </summary>
+/// <remarks>
+/// Baseline value for a battle before the first turn is opened.
+/// We intentionally use 0 (not -1) so that Turn 1 can be opened when
+/// LastResolvedTurnIndex == (turnIndex - 1).
+///
+/// IMPORTANT:
+/// Redis TryOpenTurn Lua script relies on this convention.
+/// Do NOT change this value without updating the Lua gate conditions.
+/// </remarks>
+internal sealed class BattleState
+{
+    public Guid BattleId { get; set; }
+    public Guid PlayerAId { get; set; }
+    public Guid PlayerBId { get; set; }
+    public Ruleset Ruleset { get; set; } = null!;
+    public BattlePhase Phase { get; set; }
+    public int TurnIndex { get; set; }
+    
+    /// <summary>
+    /// Turn deadline in unix milliseconds (Int64).
+    /// Stored in Redis JSON and used as ZSET score for consistency.
+    /// </summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public long DeadlineUnixMs { get; set; }
+    
+    public int NoActionStreakBoth { get; set; }
+    public int LastResolvedTurnIndex { get; set; }
+    public Guid MatchId { get; set; } // Store MatchId for BattleEnded event
+    public int Version { get; set; } = 1;
+
+    // Player HP (for battle engine)
+    public int? PlayerAHp { get; set; }
+    public int? PlayerBHp { get; set; }
+    
+    // Player stats (for combat)
+    public int? PlayerAStrength { get; set; }
+    public int? PlayerAStamina { get; set; }
+    public int? PlayerAAgility { get; set; }
+    public int? PlayerAIntuition { get; set; }
+    public int? PlayerBStrength { get; set; }
+    public int? PlayerBStamina { get; set; }
+    public int? PlayerBAgility { get; set; }
+    public int? PlayerBIntuition { get; set; }
+
+    // Participant metadata (infrastructure-level, not domain)
+    public string? PlayerAName { get; set; }
+    public string? PlayerBName { get; set; }
+    public int? PlayerAMaxHp { get; set; }
+    public int? PlayerBMaxHp { get; set; }
+
+    // Terminal outcome fields — populated by EndBattleAndMarkResolvedScript when a battle ends.
+    // Absent for non-terminal battles and for battles that ended before this field set shipped.
+    // Used exclusively by BattleRecoveryService to reconstruct a faithful BattleCompleted if the
+    // process crashed between Redis end-commit and outbox flush.
+
+    /// <summary>
+    /// Winner identity id as a string for JSON/Lua compatibility. Empty string or missing
+    /// means "no winner" (draw / double forfeit / system-level termination).
+    /// </summary>
+    public string? EndWinnerPlayerId { get; set; }
+
+    /// <summary>
+    /// <see cref="Kombats.Battle.Domain.Results.EndBattleReason"/> value as int for Lua compat.
+    /// </summary>
+    public int? EndReason { get; set; }
+
+    public int? EndFinalTurnIndex { get; set; }
+
+    public long? EndedAtUnixMs { get; set; }
+}
+
+
+

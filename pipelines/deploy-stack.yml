@@ -1,0 +1,241 @@
+# pipelines/deploy-stack.yml
+# CD pipeline: deploy Kombats demo stack to Azure.
+# Triggered automatically after successful build-backend CI run on main.
+# Mirrors the logic of scripts/deploy-stack.sh.
+
+trigger: none
+pr: none
+
+resources:
+  pipelines:
+    - pipeline: build-backend
+      source: kombats-dev-pipeline
+      trigger:
+        branches:
+          include:
+            - main
+
+variables:
+  - group: kombats-secrets
+  - name: RESOURCE_GROUP
+    value: rg-kombats-demo
+  - name: LOCATION
+    value: westeurope
+
+stages:
+  - stage: Deploy
+    displayName: 'Deploy Kombats stack'
+    jobs:
+      - deployment: deploy
+        displayName: 'Deploy to kombats-demo'
+        environment: kombats-demo
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: 'Bicep deploy'
+                  inputs:
+                    azureSubscription: azure-kombats
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      export IMAGE_TAG="$(resources.pipeline.build-backend.runID)"
+                      export MIGRATOR_IMAGE="ghcr.io/sorokinartemv/kombats-migrator:$IMAGE_TAG"
+
+                      echo "Deploying with IMAGE_TAG=$IMAGE_TAG"
+
+                      deployment_json=$(az deployment sub create \
+                        --location $(LOCATION) \
+                        --template-file infra/main.bicep \
+                        --parameters infra/main.bicepparam \
+                        --name kombats-stack-deploy \
+                        -o json)
+
+                      bff_url=$(echo "$deployment_json" | jq -r '.properties.outputs.bffUrl.value' | sed 's:/*$::')
+                      kc_url=$(echo "$deployment_json" | jq -r '.properties.outputs.keycloakUrl.value' | sed 's:/*$::')
+                      swa_url=$(echo "$deployment_json" | jq -r '.properties.outputs.swaUrl.value' | sed 's:/*$::')
+                      swa_name=$(echo "$deployment_json" | jq -r '.properties.outputs.swaName.value')
+                      sa_name=$(echo "$deployment_json" | jq -r '.properties.outputs.storageAccountName.value')
+                      share_name=$(echo "$deployment_json" | jq -r '.properties.outputs.shareName.value')
+
+                      echo "##vso[task.setvariable variable=BFF_URL]$bff_url"
+                      echo "##vso[task.setvariable variable=KC_URL]$kc_url"
+                      echo "##vso[task.setvariable variable=SWA_URL]$swa_url"
+                      echo "##vso[task.setvariable variable=SWA_NAME]$swa_name"
+                      echo "##vso[task.setvariable variable=SA_NAME]$sa_name"
+                      echo "##vso[task.setvariable variable=SHARE_NAME]$share_name"
+
+                      echo "  BFF:      $bff_url"
+                      echo "  Keycloak: $kc_url"
+                      echo "  SWA:      $swa_url"
+                  env:
+                    GHCR_TOKEN: $(GHCR_TOKEN)
+                    POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)
+                    KEYCLOAK_DB_PASSWORD: $(KEYCLOAK_DB_PASSWORD)
+                    KEYCLOAK_ADMIN_PASSWORD: $(KEYCLOAK_ADMIN_PASSWORD)
+
+                - script: |
+                    set -euo pipefail
+                    cd src/Kombats.Client
+                    npm install
+                    npm run build
+                    jq -n \
+                      --arg authority "$KC_URL/realms/kombats" \
+                      --arg clientId  "kombats-web" \
+                      --arg bffBase   "$BFF_URL" \
+                      '{keycloakAuthority: $authority, keycloakClientId: $clientId, bffBaseUrl: $bffBase}' \
+                      > dist/config.json
+                  displayName: 'Build frontend'
+                  env:
+                    KC_URL: $(KC_URL)
+                    BFF_URL: $(BFF_URL)
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy SWA'
+                  inputs:
+                    azureSubscription: azure-kombats
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      swa_token=""
+                      for _ in 1 2 3 4 5 6; do
+                        swa_token=$(az staticwebapp secrets list \
+                          -n "$SWA_NAME" -g $(RESOURCE_GROUP) \
+                          --query properties.apiKey -o tsv 2>/dev/null || true)
+                        [[ -n "$swa_token" ]] && break
+                        sleep 5
+                      done
+
+                      if [[ -z "$swa_token" ]]; then
+                        echo "ERROR: Failed to retrieve SWA deployment token after 30 sec" >&2
+                        exit 1
+                      fi
+
+                      npm install -g '@azure/static-web-apps-cli'
+
+                      swa deploy src/Kombats.Client/dist \
+                        --deployment-token "$swa_token" \
+                        --env production
+                  env:
+                    SWA_NAME: $(SWA_NAME)
+
+                - task: AzureCLI@2
+                  displayName: 'Application bringup'
+                  inputs:
+                    azureSubscription: azure-kombats
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      echo "=== Patch BFF CORS ==="
+                      az containerapp update \
+                        -n bff -g $(RESOURCE_GROUP) \
+                        --set-env-vars "Cors__AllowedOrigins__0=$SWA_URL" \
+                        --output none
+
+                      echo "=== Upload realm.json ==="
+                      sa_key=$(az storage account keys list \
+                        -n "$SA_NAME" -g $(RESOURCE_GROUP) \
+                        --query '[0].value' -o tsv)
+
+                      temp_realm=$(mktemp)
+                      trap 'rm -f "$temp_realm"' EXIT
+                      sed "s|__SWA_ORIGIN__|$SWA_URL|g" infra/keycloak/realm.json > "$temp_realm"
+
+                      az storage file upload \
+                        --account-name "$SA_NAME" \
+                        --account-key "$sa_key" \
+                        --share-name "$SHARE_NAME" \
+                        --source "$temp_realm" \
+                        --path 'keycloak/realm.json' \
+                        --output none
+
+                      echo "=== Run migrator ==="
+                      az containerapp job start -n migrator -g $(RESOURCE_GROUP) --output none
+
+                      status="Running"
+                      deadline=$(( $(date +%s) + 300 ))
+                      while [[ "$status" == "Running" && $(date +%s) -lt $deadline ]]; do
+                        sleep 10
+                        status=$(az containerapp job execution list \
+                          -n migrator -g $(RESOURCE_GROUP) \
+                          --query '[0].properties.status' -o tsv)
+                        echo "  migrator status: $status"
+                      done
+
+                      if [[ "$status" != "Succeeded" ]]; then
+                        echo "ERROR: Migrator did not succeed (status: $status)" >&2
+                        exit 1
+                      fi
+
+                      echo "=== Restart Keycloak ==="
+                      rev=$(az containerapp show -n keycloak -g $(RESOURCE_GROUP) \
+                        --query 'properties.latestRevisionName' -o tsv)
+                      az containerapp revision restart -n keycloak -g $(RESOURCE_GROUP) --revision "$rev" --output none
+                  env:
+                    SWA_URL: $(SWA_URL)
+                    SA_NAME: $(SA_NAME)
+                    SHARE_NAME: $(SHARE_NAME)
+
+                - task: AzureCLI@2
+                  displayName: 'Smoke tests'
+                  inputs:
+                    azureSubscription: azure-kombats
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      echo "Waiting 30s for Keycloak to come back after restart..."
+                      sleep 30
+
+                      # Keycloak issuer endpoint — usually warms up quickly
+                      kc_status=$(curl -s -o /dev/null -w '%{http_code}' "$KC_URL/realms/kombats/.well-known/openid-configuration" || echo "000")
+                      swa_status=$(curl -s -o /dev/null -w '%{http_code}' "$SWA_URL" || echo "000")
+
+                      # BFF /health — with retry loop, because downstream services
+                      # (players, matchmaking, battle) are scaled to zero and need
+                      # cold start (~15s each). First attempt warms them up;
+                      # subsequent attempts should return 200 once they're ready.
+                      echo "Probing BFF /health (will warm up scale-to-zero downstream services)..."
+                      bff_status="000"
+                      for attempt in 1 2 3 4 5 6; do
+                        bff_status=$(curl -s --max-time 25 -o /dev/null -w '%{http_code}' "$BFF_URL/health" || echo "000")
+                        echo "  attempt $attempt: $bff_status"
+                        if [[ "$bff_status" == "200" ]]; then
+                          break
+                        fi
+                        sleep 15
+                      done
+
+                      echo ""
+                      echo "Final results:"
+                      echo "  BFF /health:        $bff_status"
+                      echo "  Keycloak issuer:    $kc_status"
+                      echo "  SWA index:          $swa_status"
+
+                      failed=0
+                      [[ "$bff_status" != "200" ]] && { echo "ERROR: BFF /health expected 200, got $bff_status (after 6 retry attempts)" >&2; failed=1; }
+                      [[ "$kc_status" != "200" ]] && { echo "ERROR: Keycloak issuer expected 200, got $kc_status" >&2; failed=1; }
+                      [[ "$swa_status" != "200" ]] && { echo "ERROR: SWA index expected 200, got $swa_status" >&2; failed=1; }
+
+                      [[ "$failed" == "1" ]] && exit 1
+
+                      echo ""
+                      echo "All smoke tests passed."
+                      echo "Stack is live at:"
+                      echo "  $SWA_URL"
+                  env:
+                    BFF_URL: $(BFF_URL)
+                    KC_URL: $(KC_URL)
+                    SWA_URL: $(SWA_URL)
