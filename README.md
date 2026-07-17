@@ -230,3 +230,5 @@ Load tests live in `tests/Kombats.LoadTests/` (NBomber + a Locust migration) —
 ## Deployment
 
 Infrastructure as Code targets **Azure Container Apps** via Bicep (`infra/main.bicep` → `workload.bicep`): Container Apps Environment, stateful apps (Postgres/Redis/RabbitMQ), the five backend apps, Keycloak, a migration job, and a static web app for the frontend. Container images are published to GHCR. CI/CD is defined under `pipelines/` (Azure DevOps).
+
+<img width="2552" height="1381" alt="bat" src="https://github.com/user-attachments/assets/1ebc17c6-77cb-47ec-b6cd-d61ff4c6431f" />
